@@ -3,7 +3,7 @@
 #include "Sketch.h"
 #include "Viewer.h"
 
-Sketch::Sketch(const QRectF &bounds)
+Sketch::Sketch(Document * document, const QRectF &bounds) : document(document)
 {
     setBounds(bounds);
 
@@ -18,7 +18,7 @@ void Sketch::init()
 
     for(int i = 0; i < numViews; i++){
         auto type = SketchViewType(SketchViewType::VIEW_TOP + i);
-        auto view = new SketchView(this, type);
+        auto view = new SketchView(document, this, type);
         views << view;
     }
 }

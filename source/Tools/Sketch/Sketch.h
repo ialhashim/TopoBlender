@@ -6,11 +6,13 @@ class Sketch : public Tool
 {
     Q_OBJECT
 public:
-    Sketch(const QRectF& bounds);
+    Sketch(Document * document, const QRectF& bounds);
 
     void init();
 
     QVector<SketchView*> views;
+
+    Document * document;
 
 public slots:
     void resizeViews();

@@ -32,9 +32,9 @@ public:
 		mProjectionMatrix.setIdentity();
 		mViewMatrix.setIdentity();
 
-		mFovY = (float)M_PI / 3.1f;
+        mFovY = (float)M_PI / 5.0f;
 		mNearDist = 0.1f;
-		mFarDist = 50.0f;
+        mFarDist = 100.0f;
 
 		mVpX = 0;
 		mVpY = 0;

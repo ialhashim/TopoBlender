@@ -3,6 +3,8 @@
 #include <QMatrix4x4>
 #include <QGraphicsSceneMouseEvent>
 
+class Document;
+
 namespace Eigen{ class Camera; class Trackball; }
 
 enum SketchViewType{ VIEW_TOP, VIEW_FRONT, VIEW_LEFT, VIEW_CAMERA };
@@ -14,9 +16,11 @@ class SketchView : public QGraphicsObject
     Q_PROPERTY(QRectF rect READ boundingRect WRITE setRect)
 
 public:
-    SketchView(QGraphicsItem * parent, SketchViewType type);
+    SketchView(Document * document, QGraphicsItem * parent, SketchViewType type);
 	~SketchView();
     SketchViewType type;
+
+    Document * document;
 
     void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = 0);
 	void prePaint(QPainter * painter, QWidget * widget);

@@ -13,6 +13,8 @@ public:
     void initializeGL();
 
     QMap<QString, QOpenGLShaderProgram*> shaders;
+    QMatrix4x4 pvm;
+    QVector3D eyePos;
 
     // Draw primitives
     void drawLines(const QVector<QVector3D> &lines, QColor color, QMatrix4x4 camera);

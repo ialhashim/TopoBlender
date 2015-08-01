@@ -14,6 +14,6 @@ protected:
 
     bool isGradientBackground;
 
-	void wheelEvent(QGraphicsSceneWheelEvent *event);
+    void wheelEvent(QGraphicsSceneWheelEvent *event);
 };
 

@@ -5,11 +5,7 @@
 
 GraphicsScene::GraphicsScene() : isGradientBackground(false)
 {
-
-}
-
-void GraphicsScene::drawBackground(QPainter *painter, const QRectF &rect)
-{
+    /// Background:
     // Colors
     auto lightBackColor = QColor::fromRgb(124, 143, 162);
     auto darkBackColor = QColor::fromRgb(27, 30, 32);
@@ -27,7 +23,10 @@ void GraphicsScene::drawBackground(QPainter *painter, const QRectF &rect)
     {
         setBackgroundBrush(QBrush(darkBackColor));
     }
+}
 
+void GraphicsScene::drawBackground(QPainter *painter, const QRectF &rect)
+{
     QGraphicsScene::drawBackground(painter,rect);
 }
 

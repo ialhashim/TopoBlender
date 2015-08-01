@@ -12,11 +12,13 @@
 #include <QLinearGradient>
 #include <QOpenGLFramebufferObject>
 
+#include "Document.h"
+
 double a = 0;
 
-SketchView::SketchView(QGraphicsItem *parent, SketchViewType type) :
+SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewType type) :
 QGraphicsObject(parent), rect(QRect(0, 0, 100, 100)), type(type), camera(nullptr), trackball(nullptr),
-leftButtonDown(false), rightButtonDown(false), middleButtonDown(false)
+leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document(document)
 {
 	this->setFlags(QGraphicsItem::ItemIsMovable);
 
@@ -25,13 +27,25 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false)
 
 	if (type == VIEW_CAMERA)
 	{
-		auto frame = camera->frame();
-		frame.orientation = Eigen::Quaternionf(0.8f, 0.4f, -0.15f, -0.26f).normalized();
-		frame.position = Eigen::Vector3f(-4, -5, 4);
+        // Camera target and initial position
+        auto frame = camera->frame();
+        frame.position = Eigen::Vector3f(-1, 0, 0.5);
+        camera->setTarget(Eigen::Vector3f(0,0,0.5));
 		camera->setFrame(frame);
+
+        // Default view angle
+        double theta1 = acos(-1) * 0.75;
+        double theta2 = acos(-1) * 0.10;
+        camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
+        camera->zoom(-4);
+        camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
 
 		trackball->setCamera(camera);
 	}
+    else
+    {
+        if(type != VIEW_TOP) camera->setTarget(Eigen::Vector3f(0,0.5f,0));
+    }
 }
 
 SketchView::~SketchView()
@@ -64,7 +78,6 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
 		// Camera settings
 		QMatrix4x4 cameraMatrix;
-
 		if (type == VIEW_CAMERA)
 		{
 			camera->setViewport(rect.width(), rect.height());
@@ -73,6 +86,8 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 			p.transposeInPlace();
 			v.transposeInPlace();
 			cameraMatrix = QMatrix4x4(p.data()) * QMatrix4x4(v.data());
+
+            glwidget->eyePos = QVector3D(camera->position().x(),camera->position().y(),camera->position().z());
 		}
 		else
 		{
@@ -84,40 +99,50 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
 			cameraMatrix = Viewer::defaultOrthoViewMatrix(type, rect.width(), rect.height(), camera->target().z());
 			cameraMatrix.translate(d);
+
+            glwidget->eyePos = QVector3D(-2,-2,2);
 		}
 
-		// Grid: prepare and draw
-		{
-			// Build grid geometry
-			QVector<QVector3D> lines;
-			double gridWidth = 10;
-			double gridSpacing = gridWidth / 10.0;
-			for (GLfloat i = -gridWidth; i <= gridWidth; i += gridSpacing) {
-				lines << QVector3D(i, gridWidth, 0); lines << QVector3D(i, -gridWidth, 0);
-				lines << QVector3D(gridWidth, i, 0); lines << QVector3D(-gridWidth, i, 0);
-			}
+        // Save camera at OpenGL widget
+        glwidget->pvm = cameraMatrix;
 
-			// Grid color
-			QColor color = QColor::fromRgbF(0.5, 0.5, 0.5, 0.5);
+        // Draw debug shape
+        {
+            //glwidget->drawBox(3, 1, 2, cameraMatrix);
+        }
 
-			// Rotate grid based on view type
-			QMatrix4x4 rot; rot.setToIdentity();
-			switch (type){
-			case VIEW_TOP: rot.rotate(0, QVector3D(1, 0, 0)); break;
-			case VIEW_FRONT: rot.rotate(90, QVector3D(1, 0, 0)); break;
-			case VIEW_LEFT: rot.rotate(90, QVector3D(0, 1, 0)); break;
-			case VIEW_CAMERA: break;
-			}
-			for (auto & l : lines) l = rot.map(l);
+        // Draw models
+        {
+            document->drawModel(document->firstModelName(), glwidget);
+        }
 
-			// Draw grid
-			glwidget->drawLines(lines, color, cameraMatrix);
-		}
+        // Grid: prepare and draw
+        {
+            // Build grid geometry
+            QVector<QVector3D> lines;
+            double gridWidth = 10;
+            double gridSpacing = gridWidth / 20.0;
+            for (GLfloat i = -gridWidth; i <= gridWidth; i += gridSpacing) {
+                lines << QVector3D(i, gridWidth, 0); lines << QVector3D(i, -gridWidth, 0);
+                lines << QVector3D(gridWidth, i, 0); lines << QVector3D(-gridWidth, i, 0);
+            }
 
-		// Draw shape
-		{
-			glwidget->drawBox(3, 1, 2, cameraMatrix);
-		}
+            // Grid color
+            QColor color = QColor::fromRgbF(0.5, 0.5, 0.5, 0.1);
+
+            // Rotate grid based on view type
+            QMatrix4x4 rot; rot.setToIdentity();
+            switch (type){
+            case VIEW_TOP: rot.rotate(0, QVector3D(1, 0, 0)); break;
+            case VIEW_FRONT: rot.rotate(90, QVector3D(1, 0, 0)); break;
+            case VIEW_LEFT: rot.rotate(90, QVector3D(0, 1, 0)); break;
+            case VIEW_CAMERA: break;
+            }
+            for (auto & l : lines) l = rot.map(l);
+
+            // Draw grid
+            glwidget->drawLines(lines, color, cameraMatrix);
+        }
 	}
 
 	// End 3D drawing
@@ -202,16 +227,21 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 	}
 
 	// Camera movement
-	if (type == SketchViewType::VIEW_CAMERA)
-	{
-		trackball->track(Eigen::Vector2i(mouseMoveCursorPos.x(), mouseMoveCursorPos.y()));
-	}
-	else
-	{
-		double scale = 0.01;
-		auto delta = scale * (buttonDownCursorPos - mouseMoveCursorPos);
-		camera->setTarget(camera->start + Eigen::Vector3f(delta.x(), delta.y(), 0));
-	}
+    if(rightButtonDown)
+    {
+        if (type == SketchViewType::VIEW_CAMERA)
+        {
+            trackball->track(Eigen::Vector2i(mouseMoveCursorPos.x(), mouseMoveCursorPos.y()));
+        }
+        else
+        {
+            double scale = 0.01;
+            auto delta = scale * (buttonDownCursorPos - mouseMoveCursorPos);
+            camera->setTarget(camera->start + Eigen::Vector3f(delta.x(), delta.y(), 0));
+        }
+    }
+
+    scene()->update();
 }
 
 void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
@@ -224,15 +254,20 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 	if (event->buttons() & Qt::MiddleButton) middleButtonDown = true;
 
 	// Camera movement
-	if (type == SketchViewType::VIEW_CAMERA)
-	{
-		trackball->start(Eigen::Trackball::Around);
-		trackball->track(Eigen::Vector2i(buttonDownCursorPos.x(), buttonDownCursorPos.y()));
-	}
-	else
-	{
-		camera->start = camera->target();
-	}
+    if(rightButtonDown)
+    {
+        if (type == SketchViewType::VIEW_CAMERA)
+        {
+            trackball->start(Eigen::Trackball::Around);
+            trackball->track(Eigen::Vector2i(buttonDownCursorPos.x(), buttonDownCursorPos.y()));
+        }
+        else
+        {
+            camera->start = camera->target();
+        }
+    }
+
+    scene()->update();
 }
 
 void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
@@ -245,6 +280,8 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 
 	messages.clear(); messages << "Mouse released." <<
 		QString("%1,%2").arg(buttonUpCursorPos.x()).arg(buttonUpCursorPos.y());
+
+    scene()->update();
 }
 
 void SketchView::wheelEvent(QGraphicsSceneWheelEvent * event)
@@ -265,4 +302,6 @@ void SketchView::wheelEvent(QGraphicsSceneWheelEvent * event)
 		t.z() += (step * speed);
 		camera->setTarget(t);
 	}
+
+    scene()->update();
 }

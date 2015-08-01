@@ -21,7 +21,7 @@ void Viewer::initializeGL()
     /// Antialiasing and alpha blending:
     glEnable(GL_MULTISAMPLE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable( GL_BLEND );
+    glEnable(GL_BLEND);
 
     /// Prepare shaders:
     // Lines shader:
@@ -30,21 +30,20 @@ void Viewer::initializeGL()
         program->addShaderFromSourceCode(QOpenGLShader::Vertex,
             "attribute highp vec4 vertex;\n"
             "uniform highp mat4 matrix;\n"
-            "varying float x;\n"
-            "varying float y;\n"
+            "varying vec3 pos;\n"
             "void main(void)\n"
             "{\n"
             "   gl_Position = matrix * vertex;\n"
-            "   x = gl_Position.x / gl_Position.z; y = gl_Position.y / gl_Position.z;\n"
+            "   pos = vertex.xyz;\n"
             "}");
         program->addShaderFromSourceCode(QOpenGLShader::Fragment,
             "uniform mediump vec4 color;\n"
-            "varying float x;\n"
-            "varying float y;\n"
+            "varying vec3 pos;\n"
             "void main(void)\n"
             "{\n"
+            "   color.a = clamp(0.5 - color.a * length(pos),0,1);\n"
             "   gl_FragColor = color; \n"
-            "   //gl_FragColor = vec4( 0.5 * x + 0.5, - 0.5 * y + 0.5, 0.0, 1.0 ); \n"
+            "   if (gl_FragColor.a < 0.01)discard;"
             "}");
         program->link();
 
@@ -98,6 +97,62 @@ void Viewer::initializeGL()
 
         shaders.insert("texturedQuad", program);
     }
+
+    // Mesh
+    {
+        auto program = new QOpenGLShaderProgram (context());
+        program->addShaderFromSourceCode(QOpenGLShader::Vertex,
+            "#version 330 core\n"
+            "layout (location = 0) in vec4 vertex;\n"
+            "layout (location = 1) in vec4 normal;\n"
+            "layout (location = 2) in vec4 color;\n"
+            "uniform mat4 matrix;\n"
+            "out vec3 FragPos;\n"
+            "out vec3 Normal;\n"
+            "out vec4 Color;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_Position = matrix * vertex;\n"
+            "   FragPos = vertex.xyz;\n"
+            "   Normal = normal.xyz;\n"
+            "   Color = color;\n"
+            "}");
+        program->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "#version 330 core\n"
+            "out vec4 color;\n"
+            "in vec3 FragPos;\n"
+            "in vec3 Normal;\n"
+            "in vec4 Color;\n"
+            "uniform vec3 lightPos;\n"
+            "uniform vec3 viewPos;\n"
+            "uniform vec3 lightColor;\n"
+            "void main(void)\n"
+            "{\n"
+            "    // Ambient \n"
+            "    float ambientStrength = 0.2f; \n"
+            "    vec3 ambient = ambientStrength * lightColor; \n"
+            "    \n"
+            "    // Diffuse \n"
+            "    vec3 norm = normalize(Normal); \n"
+            "    vec3 lightDir = normalize(lightPos - FragPos); \n"
+            "    float diff = max(dot(norm, lightDir), 0.0); \n"
+            "    vec3 diffuse = diff * lightColor; \n"
+            "    \n"
+            "    // Specular \n"
+            "    vec3 fakeLightDir = normalize(vec3(0.5,0.5,1));\n"
+            "    float specularStrength = 1.0f; \n"
+            "    vec3 viewDir = normalize(viewPos - FragPos); \n"
+            "    vec3 reflectDir = reflect(-fakeLightDir, norm);  \n"
+            "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64); \n"
+            "    vec3 specular = specularStrength * spec * lightColor;   \n"
+            "    \n"
+            "    vec3 result = (ambient + diffuse + specular) * Color.xyz; \n"
+            "    color = vec4(result, 1.0f); \n"
+            "}");
+        program->link();
+
+        shaders.insert("mesh", program);
+    }
 }
 
 QMatrix4x4 Viewer::defaultOrthoViewMatrix(int type, int w, int h, float zoomFactor)
@@ -105,16 +160,16 @@ QMatrix4x4 Viewer::defaultOrthoViewMatrix(int type, int w, int h, float zoomFact
     QMatrix4x4 proj, view, pvMatrix;
 
     float ratio = float(w) / h;
-	float orthoZoom = 3 + zoomFactor;
+    float orthoZoom = 1 + zoomFactor;
 	float orthoEye = 10;
 
 	// Default is top view
-	QVector3D focalPoint(0, 0, 0);
+    QVector3D focalPoint(0, 0, 0);
 	QVector3D eye(0, 0, orthoEye);
 	QVector3D upVector(0.0, 1.0, 0.0);
 
 	if (type == 1){ /* FRONT */
-		eye = QVector3D(0, -orthoEye, 0);
+        eye = QVector3D(0, -orthoEye, 0);
 		upVector = QVector3D(0,0,1);
 	}
 
@@ -132,6 +187,10 @@ QMatrix4x4 Viewer::defaultOrthoViewMatrix(int type, int w, int h, float zoomFact
 
 void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4x4 camera)
 {
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
     auto & program = *shaders["lines"];
 
     // Activate shader
@@ -157,6 +216,9 @@ void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4
     program.disableAttributeArray(vertexLocation);
 
     program.release();
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
 }
 
 void Viewer::drawBox(double width, double length, double height, QMatrix4x4 camera)
