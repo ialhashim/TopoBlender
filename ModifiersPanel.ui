@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ModifiersPanel</class>
+ <widget class="QWidget" name="ModifiersPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>123</width>
+    <height>176</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget { background:transparent }
+
+QPushButton { 
+	background:rgb(90,90,90,128);
+	border: 3px solid rgb(90,90,90,0);
+	padding: 5px;
+    color: white;
+	font-size: 12px;
+	text-align:left;
+}
+
+QCheckBox { 
+	background:rgb(90,90,90,128);
+	border: 3px solid rgb(90,90,90,0);
+	padding: 5px;
+    color: white;
+	font-size: 12px;
+}
+
+QPushButton:hover{ background:rgb(255,153,0); border-color:rgb(255,153,0); }
+QPushButton:pressed{ background:rgb(255,153,0); border-color:#FFB444; top:2px; }</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <property name="leftMargin">
+    <number>3</number>
+   </property>
+   <property name="topMargin">
+    <number>3</number>
+   </property>
+   <property name="rightMargin">
+    <number>3</number>
+   </property>
+   <property name="bottomMargin">
+    <number>3</number>
+   </property>
+   <property name="spacing">
+    <number>3</number>
+   </property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="sketchButton">
+     <property name="text">
+      <string>Sketch</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="loadButton">
+     <property name="text">
+      <string>Load</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <widget class="QPushButton" name="autoBlendButton">
+     <property name="text">
+      <string>Auto Blend</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QPushButton" name="customBlendButton">
+     <property name="text">
+      <string>Manual Blend</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <widget class="QPushButton" name="structureTransferButton">
+     <property name="text">
+      <string>Structure Transfer</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <widget class="QPushButton" name="exploreButton">
+     <property name="text">
+      <string>Explore</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
