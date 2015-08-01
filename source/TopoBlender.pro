@@ -45,23 +45,28 @@ win32{
     LIBS += -lopengl32 -lglu32
 }
 
+# C++11 support on linux
+linux-g++{ CONFIG += c++11 warn_off }
+
 ### GeoTopo Libraries
 
 # Build flag
 CONFIG(debug, debug|release) {CFG = debug} else {CFG = release}
 
-# NURBS library
-LIBS += -L$$PWD/../../GeoTopo/source/NURBS/lib/$$CFG -lNURBS
-INCLUDEPATH += ../../GeoTopo/source/NURBS
-
-# Surface mesh library
-LIBS += -L$$PWD/../../GeoTopo/source/external/SurfaceMesh/lib/$$CFG -lSurfaceMesh
-INCLUDEPATH += ../../GeoTopo/source/external/SurfaceMesh ../../GeoTopo/source/external/SurfaceMesh/surface_mesh
+# GeoTopo library
+LIBS += -L$$PWD/../../GeoTopo/source/GeoTopoLib/lib/$$CFG -lGeoTopoLib
+INCLUDEPATH += ../../GeoTopo/source/GeoTopoLib
 
 # StructureGraph library
 LIBS += -L$$PWD/../../GeoTopo/source/StructureGraphLib/lib/$$CFG -lStructureGraphLib
 INCLUDEPATH += ../../GeoTopo/source/StructureGraphLib
 
-# GeoTopo library
-LIBS += -L$$PWD/../../GeoTopo/source/GeoTopoLib/lib/$$CFG -lGeoTopoLib
-INCLUDEPATH += ../../GeoTopo/source/GeoTopoLib
+# Surface mesh library
+LIBS += -L$$PWD/../../GeoTopo/source/external/SurfaceMesh/lib/$$CFG -lSurfaceMesh
+INCLUDEPATH += ../../GeoTopo/source/external/SurfaceMesh ../../GeoTopo/source/external/SurfaceMesh/surface_mesh
+
+# NURBS library
+LIBS += -L$$PWD/../../GeoTopo/source/NURBS/lib/$$CFG -lNURBS
+INCLUDEPATH += ../../GeoTopo/source/NURBS
+
+linux-g++{ LIBS += -lGLU }
