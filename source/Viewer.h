@@ -13,15 +13,16 @@ public:
     void initializeGL();
 
     QMap<QString, QOpenGLShaderProgram*> shaders;
+
+    // Active camera properites
     QMatrix4x4 pvm;
     QVector3D eyePos;
 
     // Draw primitives
-    void drawLines(const QVector<QVector3D> &lines, QColor color, QMatrix4x4 camera);
+    void drawPoints(const QVector<QVector3D> &points, QColor color, QMatrix4x4 camera, bool isConnected = false);
+    void drawLines(const QVector<QVector3D> &lines, QColor color, QMatrix4x4 camera, QString shaderName);
     void drawBox(double width, double length, double height, QMatrix4x4 camera);
     void drawQuad(const QImage &img);
-
-    // Camera stuff:
-    static QMatrix4x4 defaultOrthoViewMatrix(int type, int w, int h);
-	static QMatrix4x4 defaultOrthoViewMatrix(int type, int w, int h, float zoomFactor = 1.0f);
+    void drawPlane(QVector3D normal, QVector3D origin, QMatrix4x4 camera);
+    void drawTriangles(QColor useColor, const QVector<QVector3D> &points, const QVector<QVector3D> &normals, QMatrix4x4 camera);
 };

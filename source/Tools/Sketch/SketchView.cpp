@@ -14,11 +14,12 @@
 
 #include "Document.h"
 
-double a = 0;
+QVector3D toQVector3D(Eigen::Vector3f p){ return QVector3D(p[0],p[1],p[2]); }
+Eigen::Vector3f toVector3f(QVector3D p){ return Eigen::Vector3f(p[0],p[1],p[2]); }
 
 SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewType type) :
 QGraphicsObject(parent), rect(QRect(0, 0, 100, 100)), type(type), camera(nullptr), trackball(nullptr),
-leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document(document)
+leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document(document), sketchOp(SKETCH_NONE)
 {
 	this->setFlags(QGraphicsItem::ItemIsMovable);
 
@@ -45,6 +46,20 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
     else
     {
         if(type != VIEW_TOP) camera->setTarget(Eigen::Vector3f(0,0.5f,0));
+    }
+
+    // Sketching plane
+    switch(type){
+    case VIEW_TOP:
+        sketchPlane = new Eigen::Plane(Eigen::Vector3f::UnitZ(), Eigen::Vector3f(0,0,0.5f));
+        break;
+    case VIEW_FRONT:
+        sketchPlane = new Eigen::Plane(-Eigen::Vector3f::UnitY(), Eigen::Vector3f(0,0,0.5f));
+        break;
+    case VIEW_LEFT:
+        sketchPlane = new Eigen::Plane(-Eigen::Vector3f::UnitX(), Eigen::Vector3f(0,0,0.5f));
+        break;
+    default: { sketchPlane = new Eigen::Plane(Eigen::Vector3f::UnitZ(), Eigen::Vector3f(0,0,0.5f)); break;}
     }
 }
 
@@ -87,23 +102,29 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 			v.transposeInPlace();
 			cameraMatrix = QMatrix4x4(p.data()) * QMatrix4x4(v.data());
 
-            glwidget->eyePos = QVector3D(camera->position().x(),camera->position().y(),camera->position().z());
+            eyePos = QVector3D(camera->position().x(),camera->position().y(),camera->position().z());
 		}
 		else
 		{
+            QVector3D eye(-2,-2,2);
+
 			auto delta = camera->target();
 
 			QVector3D d(delta.x(), -delta.y(), 0); // default is top view
 			if (type == VIEW_FRONT) d = QVector3D(delta.x(), 0, -delta.y());
 			if (type == VIEW_LEFT) d = QVector3D(0, -delta.x(), -delta.y());
 
-			cameraMatrix = Viewer::defaultOrthoViewMatrix(type, rect.width(), rect.height(), camera->target().z());
-			cameraMatrix.translate(d);
+            cameraMatrix = SketchView::defaultOrthoViewMatrix(eye, type, rect.width(), rect.height(),
+                                                              d, camera->target().z(), projectionMatrix, viewMatrix);
 
-            glwidget->eyePos = QVector3D(-2,-2,2);
+            // Should only be used for lighting
+            eyePos = eye + d;
 		}
 
-        // Save camera at OpenGL widget
+        // Update local camera details
+        glwidget->eyePos = eyePos;
+
+        // Temporarly save active camera at OpenGL widget
         glwidget->pvm = cameraMatrix;
 
         // Draw debug shape
@@ -141,12 +162,35 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
             for (auto & l : lines) l = rot.map(l);
 
             // Draw grid
-            glwidget->drawLines(lines, color, cameraMatrix);
+            glwidget->glLineWidth(1.0f);
+            glwidget->drawLines(lines, color, cameraMatrix, "grid_lines");
+        }
+
+        glwidget->drawPoints(sketchPoints, Qt::red, cameraMatrix, true);
+
+        bool isVisualizeSketchPlane = false;
+        if(sketchPlane != nullptr && isVisualizeSketchPlane)
+        {
+            auto n = toQVector3D(sketchPlane->normal());
+            auto o = toQVector3D(Eigen::Vector3f::Zero() - (sketchPlane->normal() * sketchPlane->offset()));
+            glwidget->drawPlane(n,o, cameraMatrix);
         }
 	}
 
 	// End 3D drawing
 	painter->endNativePainting();
+
+    // Simple rectangle for sketching sheets
+    if(leftButtonDown && sketchOp == SKETCH_SHEET)
+    {
+        auto c1 = worldToScreen(sketchPoints.front());
+        auto c2 = worldToScreen(sketchPoints.back());
+        QRectF r(QPointF(c1.x(),c1.y()), QPointF(c2.x(),c2.y()));
+
+        painter->setPen(QPen(Qt::blue,2));
+        painter->drawRect(r);
+        painter->fillRect(r, QColor(0,0,255,128));
+    }
 
 	// Foreground stuff
 	postPaint(painter, widget);
@@ -157,13 +201,13 @@ void SketchView::prePaint(QPainter * painter, QWidget *)
 	// Background
 	{
 		auto rect = boundingRect();
+
+        // Colors
 		auto lightBackColor = QColor::fromRgb(124, 143, 162);
 		auto darkBackColor = QColor::fromRgb(27, 30, 32);
 
 		if (type == VIEW_CAMERA)
-		{
-			// Colors
-
+        {
 			QLinearGradient gradient(0, 0, 0, rect.height());
 			gradient.setColorAt(0.0, lightBackColor);
 			gradient.setColorAt(1.0, darkBackColor);
@@ -178,16 +222,31 @@ void SketchView::prePaint(QPainter * painter, QWidget *)
 
 void SketchView::postPaint(QPainter * painter, QWidget *)
 {
+    // Sketching visualization
+    {
+        painter->setPen(QPen(Qt::yellow, 3));
+        //painter->drawPolyline(QPolygonF(sketchPoints));
+    }
+
 	// View's title
-	painter->setPen(QPen(Qt::white));
-	painter->drawText(QPointF(10, 20), SketchViewTypeNames[type]);
+    {
+        painter->setPen(QPen(Qt::white));
+        painter->drawText(QPointF(10, 20), SketchViewTypeNames[type]);
+    }
+
+    // Draw current operation title
+    {
+        painter->drawText(QPointF(10, rect.height()-20), SketchViewOpName[sketchOp]);
+    }
 
 	// Messages
-	int x = 15, y = 45;
-	for (auto message : messages){
-		painter->drawText(x, y, message);
-		y += 12;
-	}
+    {
+        int x = 15, y = 45;
+        for (auto message : messages){
+            painter->drawText(x, y, message);
+            y += 12;
+        }
+    }
 
 	// Draw link
 	if (leftButtonDown || rightButtonDown || middleButtonDown)
@@ -196,10 +255,63 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
 	}
 
 	// Border
-	int bw = 3, hbw = bw * 0.5;
-	QPen borderPen(this->isUnderMouse() ? Qt::yellow : Qt::gray, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
-	painter->setPen(borderPen);
-	painter->drawRect(this->boundingRect().adjusted(hbw, hbw, -hbw, -hbw));
+    {
+        int bw = 3, hbw = bw * 0.5;
+        QPen borderPen(this->isUnderMouse() ? Qt::yellow : Qt::gray, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
+        painter->setPen(borderPen);
+        painter->drawRect(this->boundingRect().adjusted(hbw, hbw, -hbw, -hbw));
+    }
+}
+
+QMatrix4x4 SketchView::defaultOrthoViewMatrix(QVector3D & eye, int type, int w, int h,
+                                              QVector3D translation, float zoomFactor, QMatrix4x4 &proj, QMatrix4x4 &view)
+{
+    QMatrix4x4 pvMatrix;
+    proj.setToIdentity();
+    view.setToIdentity();
+
+    float ratio = float(w) / h;
+    float orthoZoom = 1 + zoomFactor;
+    float orthoEye = 10;
+
+    // Default is top view
+    QVector3D focalPoint(0, 0, 0);
+    QVector3D upVector(0.0, 1.0, 0.0);
+    eye = QVector3D(0, 0, orthoEye);
+
+    if (type == 1){ /* FRONT */
+        eye = QVector3D(0, -orthoEye, 0);
+        upVector = QVector3D(0,0,1);
+    }
+
+    if (type == 2){ /* LEFT */
+        eye = QVector3D(-orthoEye, 0, 0);
+        upVector = QVector3D(0,0,1);
+    }
+
+    proj.ortho(orthoZoom * -ratio, orthoZoom * ratio, orthoZoom * -1, orthoZoom * 1, 0.01f, 100.0f);
+    view.lookAt(eye, focalPoint, upVector);
+    view.translate(translation);
+
+    pvMatrix = proj * view;
+    return pvMatrix;
+}
+
+QVector3D SketchView::screenToWorld(QVector3D point2D)
+{
+    float x = (2.0 * point2D.x() * (1.0/rect.width())) - 1.0;
+    float y = -(2.0 * point2D.y() * (1.0/rect.height())) + 1.0;
+    float z = point2D.z();
+
+    return (projectionMatrix * viewMatrix).inverted().map(QVector3D(x,y,z));
+}
+
+QVector3D SketchView::worldToScreen(QVector3D point3D)
+{
+    QVector3D p = (projectionMatrix * viewMatrix).map(point3D);
+    return QVector3D((1.0+p.x()) * rect.width() * 0.5,
+                     (1.0-p.y()) * rect.height() * 0.5,
+                     (0.0+p.z()));
 }
 
 void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
@@ -241,6 +353,23 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         }
     }
 
+    // Sketching
+    if(leftButtonDown)
+    {
+        QVector3D screenPos(event->pos().x(), event->pos().y(), 0);
+        auto worldPos = screenToWorld(screenPos);
+
+        if(sketchOp == SKETCH_CURVE)
+        {
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+        }
+
+        if(sketchOp == SKETCH_SHEET)
+        {
+            sketchPoints.back() = toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+        }
+    }
+
     scene()->update();
 }
 
@@ -267,6 +396,25 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
         }
     }
 
+    if(leftButtonDown)
+    {
+        if(sketchOp == SKETCH_CURVE)
+        {
+            sketchPoints.clear();
+        }
+
+        if(sketchOp == SKETCH_SHEET)
+        {
+            sketchPoints.resize(2);
+
+            QVector3D screenPos(event->pos().x(), event->pos().y(), 0);
+            auto worldPos = screenToWorld(screenPos);
+
+            sketchPoints.front() = toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+            sketchPoints.back() = sketchPoints.front();
+        }
+    }
+
     scene()->update();
 }
 
@@ -274,9 +422,23 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 {
 	// Record mouse states
 	buttonUpCursorPos = event->pos();
-	if (event->button() == Qt::LeftButton) leftButtonDown = false;
-	if (event->button() == Qt::RightButton) rightButtonDown = false;
-	if (event->button() == Qt::MiddleButton) middleButtonDown = false;
+
+    if(event->button() == Qt::LeftButton)
+    {
+        if(sketchOp == SKETCH_CURVE)
+        {
+            document->createCurveFromPoints(document->firstModelName(), sketchPoints);
+        }
+
+        if(sketchOp == SKETCH_SHEET)
+        {
+            document->createSheetFromPoints(document->firstModelName(), sketchPoints);
+        }
+    }
+
+    if (event->button() == Qt::LeftButton) leftButtonDown = false;
+    if (event->button() == Qt::RightButton) rightButtonDown = false;
+    if (event->button() == Qt::MiddleButton) middleButtonDown = false;
 
 	messages.clear(); messages << "Mouse released." <<
 		QString("%1,%2").arg(buttonUpCursorPos.x()).arg(buttonUpCursorPos.y());

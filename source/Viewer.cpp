@@ -24,7 +24,49 @@ void Viewer::initializeGL()
     glEnable(GL_BLEND);
 
     /// Prepare shaders:
-    // Lines shader:
+    // Basic points shader:
+    {
+        auto program = new QOpenGLShaderProgram (context());
+        program->addShaderFromSourceCode(QOpenGLShader::Vertex,
+            "attribute highp vec4 vertex;\n"
+            "uniform highp mat4 matrix;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_Position = matrix * vertex;\n"
+            "}");
+        program->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "uniform mediump vec4 color;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_FragColor = color; \n"
+            "}");
+        program->link();
+
+        shaders.insert("points", program);
+    }
+
+    // Basic lines shader:
+    {
+        auto program = new QOpenGLShaderProgram (context());
+        program->addShaderFromSourceCode(QOpenGLShader::Vertex,
+            "attribute highp vec4 vertex;\n"
+            "uniform highp mat4 matrix;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_Position = matrix * vertex;\n"
+            "}");
+        program->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "uniform mediump vec4 color;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_FragColor = color; \n"
+            "}");
+        program->link();
+
+        shaders.insert("lines", program);
+    }
+
+    // Grid-Lines shader:
     {
         auto program = new QOpenGLShaderProgram (context());
         program->addShaderFromSourceCode(QOpenGLShader::Vertex,
@@ -47,7 +89,28 @@ void Viewer::initializeGL()
             "}");
         program->link();
 
-        shaders.insert("lines", program);
+        shaders.insert("grid_lines", program);
+    }
+
+    // Translucent shader:
+    {
+        auto program = new QOpenGLShaderProgram (context());
+        program->addShaderFromSourceCode(QOpenGLShader::Vertex,
+            "attribute highp vec4 vertex;\n"
+            "uniform highp mat4 matrix;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_Position = matrix * vertex;\n"
+            "}");
+        program->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "uniform mediump vec4 color;\n"
+            "void main(void)\n"
+            "{\n"
+            "   gl_FragColor = color; \n"
+            "}");
+        program->link();
+
+        shaders.insert("translucent", program);
     }
 
     // Box shader:
@@ -155,43 +218,59 @@ void Viewer::initializeGL()
     }
 }
 
-QMatrix4x4 Viewer::defaultOrthoViewMatrix(int type, int w, int h, float zoomFactor)
+void Viewer::drawPoints(const QVector< QVector3D > & points, QColor color, QMatrix4x4 camera, bool isConnected)
 {
-    QMatrix4x4 proj, view, pvMatrix;
+    if(points.empty()) return;
 
-    float ratio = float(w) / h;
-    float orthoZoom = 1 + zoomFactor;
-	float orthoEye = 10;
-
-	// Default is top view
-    QVector3D focalPoint(0, 0, 0);
-	QVector3D eye(0, 0, orthoEye);
-	QVector3D upVector(0.0, 1.0, 0.0);
-
-	if (type == 1){ /* FRONT */
-        eye = QVector3D(0, -orthoEye, 0);
-		upVector = QVector3D(0,0,1);
-	}
-
-	if (type == 2){ /* LEFT */
-		eye = QVector3D(-orthoEye, 0, 0);
-		upVector = QVector3D(0,0,1);
-	}
-    
-	view.lookAt(eye, focalPoint, upVector);
-	proj.ortho(orthoZoom * -ratio, orthoZoom * ratio, orthoZoom * -1, orthoZoom * 1, 0.01f, 100.0f);
-
-	pvMatrix = proj * view;
-    return pvMatrix;
-}
-
-void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4x4 camera)
-{
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
-    auto & program = *shaders["lines"];
+    glEnable(GL_POINT_SMOOTH);
+    glPointSize(5.0f);
+
+    auto & program = *shaders["points"];
+
+    // Activate shader
+    program.bind();
+
+    int vertexLocation = program.attributeLocation("vertex");
+    int matrixLocation = program.uniformLocation("matrix");
+    int colorLocation = program.uniformLocation("color");
+
+    // Pack geometry
+    QVector<GLfloat> vertices;
+    for(auto p : points) {vertices.push_back(p.x()); vertices.push_back(p.y()); vertices.push_back(p.z());}
+
+    // Shader data
+    program.enableAttributeArray(vertexLocation);
+    program.setAttributeArray(vertexLocation, &vertices[0], 3);
+    program.setUniformValue(matrixLocation, camera);
+    program.setUniformValue(colorLocation, color);
+
+    // Draw points
+    if(isConnected) glDrawArrays(GL_LINE_STRIP, 0, points.size());
+    glDrawArrays(GL_POINTS, 0, points.size());
+
+    program.disableAttributeArray(vertexLocation);
+    program.release();
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+
+    glDisable(GL_POINT_SMOOTH);
+    glPointSize(1.0f);
+}
+
+void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4x4 camera, QString shaderName)
+{
+    if(lines.empty()) return;
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+    auto & program = *shaders[shaderName];
 
     // Activate shader
     program.bind();
@@ -223,6 +302,8 @@ void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4
 
 void Viewer::drawBox(double width, double length, double height, QMatrix4x4 camera)
 {
+    if(width == 0 || length == 0 || height == 0) return;
+
     glEnable( GL_DEPTH_TEST );
 
     // Define the 8 vertices of a unit cube
@@ -305,6 +386,8 @@ void Viewer::drawBox(double width, double length, double height, QMatrix4x4 came
 
 void Viewer::drawQuad(const QImage & img)
 {
+    if(img.isNull() || img.width() == 0 || img.height() == 0) return;
+
     QOpenGLTexture texture(img.mirrored());
     texture.setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
     texture.setMagnificationFilter(QOpenGLTexture::Linear);
@@ -359,6 +442,136 @@ void Viewer::drawQuad(const QImage & img)
     program.release();
 
     texture.release();
+}
+
+void Viewer::drawPlane(QVector3D normal, QVector3D origin, QMatrix4x4 camera)
+{
+    if(normal.lengthSquared() == 0) return;
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+    // Compute two arbitrary othogonal vectors
+    auto orthogonalVector = [](const QVector3D& n) {
+        if ((abs(n.y()) >= 0.9 * abs(n.x())) && abs(n.z()) >= 0.9 * abs(n.x())) return QVector3D(0.0, -n.z(), n.y());
+        else if ( abs(n.x()) >= 0.9 * abs(n.y()) && abs(n.z()) >= 0.9 * abs(n.y()) ) return QVector3D(-n.z(), 0.0, n.x());
+        else return QVector3D(-n.y(), n.x(), 0.0);
+    };
+    auto u = orthogonalVector(normal);
+    auto v = QVector3D::crossProduct(normal, u);
+    float scale = 0.75;
+
+    auto & program = *shaders["translucent"];
+
+    // Activate shader
+    program.bind();
+    int vertexLocation = program.attributeLocation("vertex");
+    int matrixLocation = program.uniformLocation("matrix");
+    int colorLocation = program.uniformLocation("color");
+    program.enableAttributeArray(vertexLocation);
+    program.setUniformValue(matrixLocation, camera);
+
+    // Ray from origin
+    {
+        QColor color = Qt::green;
+        QVector< QVector3D > points;
+        points << origin << (origin + (normal * scale));
+        QVector<GLfloat> vertices;
+        for(auto p : points) {vertices.push_back(p.x()); vertices.push_back(p.y()); vertices.push_back(p.z());}
+        program.enableAttributeArray(vertexLocation);
+        program.setAttributeArray(vertexLocation, &vertices[0], 3);
+        program.setUniformValue(colorLocation, color);
+        glLineWidth(5);
+        glDrawArrays(GL_LINES, 0, vertices.size() / 3);
+    }
+
+    // Rectangle
+    {
+        QVector< QVector3D > points;
+        points << QVector3D(origin + (-u + v) * scale) <<
+                  QVector3D(origin + (u + v) * scale) <<
+                  QVector3D(origin + (-v + u) * scale) <<
+                  QVector3D(origin + (-v + -u) * scale);
+
+        // Pack geometry
+        QVector<GLfloat> vertices;
+        for(auto p : points) {
+            vertices.push_back(p.x()); vertices.push_back(p.y()); vertices.push_back(p.z());
+        }
+        glLineWidth(5);
+        program.setAttributeArray(vertexLocation, &vertices[0], 3);
+        program.setUniformValue(colorLocation, QColor (0,0,255,255));
+        glDrawArrays(GL_LINE_LOOP, 0, 4);
+
+        program.setAttributeArray(vertexLocation, &vertices[0], 3);
+        program.setUniformValue(colorLocation, QColor (0,0,255,80));
+        glDrawArrays(GL_QUADS, 0, 4);
+    }
+
+    program.release();
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+}
+
+void Viewer::drawTriangles(QColor useColor, const QVector<QVector3D> &points,
+                           const QVector<QVector3D> &normals, QMatrix4x4 pvm)
+{
+    // Draw meshes:
+    glEnable(GL_DEPTH_TEST);
+    glCullFace(GL_BACK);
+
+    // Activate shader
+    auto & program = *shaders["mesh"];
+    program.bind();
+
+    // Attributes
+    int vertexLocation = program.attributeLocation("vertex");
+    int normalLocation = program.attributeLocation("normal");
+    int colorLocation = program.attributeLocation("color");
+
+    program.enableAttributeArray(vertexLocation);
+    program.enableAttributeArray(normalLocation);
+    program.enableAttributeArray(colorLocation);
+
+    // Uniforms
+    int matrixLocation = program.uniformLocation("matrix");
+    int lightPosLocation = program.uniformLocation("lightPos");
+    int viewPosLocation = program.uniformLocation("viewPos");
+    int lightColorLocation = program.uniformLocation("lightColor");
+
+    program.setUniformValue(matrixLocation, pvm);
+    program.setUniformValue(lightPosLocation, eyePos);
+    program.setUniformValue(viewPosLocation, eyePos);
+    program.setUniformValue(lightColorLocation, QVector3D(1,1,1));
+
+    // Pack geometry, normals, and colors
+    QVector<GLfloat> vertex, normal, color;
+
+    for(int vf = 0; vf < points.size(); vf++){
+        for(int i = 0; i < 3; i++){
+            vertex << points[vf][i];
+            normal << normals[vf][i];
+        }
+        color << useColor.redF() << useColor.greenF() << useColor.blueF() << useColor.alphaF();
+    }
+
+    // Shader data
+    program.setAttributeArray(vertexLocation, &vertex[0], 3);
+    program.setAttributeArray(normalLocation, &normal[0], 3);
+    program.setAttributeArray(colorLocation, &color[0], 4);
+
+    // Draw
+    glDrawArrays(GL_TRIANGLES, 0, points.size());
+
+    program.disableAttributeArray(vertexLocation);
+    program.disableAttributeArray(normalLocation);
+    program.disableAttributeArray(colorLocation);
+
+    program.release();
+
+    glDisable(GL_DEPTH_TEST);
 }
 
 

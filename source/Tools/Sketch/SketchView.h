@@ -1,14 +1,18 @@
 #pragma once
 #include <QGraphicsObject>
+#include <QVector3D>
 #include <QMatrix4x4>
 #include <QGraphicsSceneMouseEvent>
 
 class Document;
 
-namespace Eigen{ class Camera; class Trackball; }
+namespace Eigen{ class Camera; class Trackball; class Plane; }
 
 enum SketchViewType{ VIEW_TOP, VIEW_FRONT, VIEW_LEFT, VIEW_CAMERA };
 static QString SketchViewTypeNames[] = {"Top", "Front", "Left", "Camera"};
+
+enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET };
+static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet"};
 
 class SketchView : public QGraphicsObject
 {
@@ -30,10 +34,26 @@ public:
     QRectF boundingRect() const { return this->rect; }
     void setRect(const QRectF & newRect){ this->rect = newRect; }
 
-    QStringList messages;
-
+    // Camera movment
     Eigen::Camera* camera;
-	Eigen::Trackball* trackball;
+    Eigen::Trackball* trackball;
+
+    // Camera properties
+    QMatrix4x4 projectionMatrix, viewMatrix;
+    QVector3D eyePos;
+
+    static QMatrix4x4 defaultOrthoViewMatrix(QVector3D &eye, int type, int w, int h, QVector3D translation,
+                                             float zoomFactor, QMatrix4x4 & proj, QMatrix4x4 & view);
+
+    QVector3D screenToWorld(QVector3D point2D);
+    QVector3D worldToScreen(QVector3D point3D);
+
+    // Sketching stuff
+    Eigen::Plane * sketchPlane;
+    SketchViewOp sketchOp;
+    QVector<QVector3D> sketchPoints;
+
+    QStringList messages;
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);

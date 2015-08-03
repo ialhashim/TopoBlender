@@ -23,7 +23,8 @@ HEADERS  += mainwindow.h \
             Viewer.h \
             Camera.h \
             Document.h \
-            Model.h
+            Model.h \
+    GeometryHelper.h
 
 # Sketch tool
 SOURCES +=  Tools/Sketch/Sketch.cpp \
@@ -34,7 +35,8 @@ HEADERS  += Tools/Sketch/Sketch.h \
 
 # Qt UI files
 FORMS    += mainwindow.ui \
-            ModifiersPanel.ui
+            ModifiersPanel.ui \
+            Tools/Sketch/Sketch.ui
 
 win32{
     # Eigen 3.2.5 introduced some new warnings

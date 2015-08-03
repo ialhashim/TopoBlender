@@ -353,4 +353,12 @@ protected:
 	bool mLastPointOk;
 };
 
+class Plane : public Eigen::Hyperplane<float,3>{
+public:
+    Plane(Eigen::Vector3f Normal, Eigen::Vector3f Origin = Eigen::Vector3f::Zero()){
+        normal() = Normal;
+        offset() = -Origin.dot(Normal);
+    }
+};
+
 } // namespace Eigen

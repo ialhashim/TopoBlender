@@ -12,10 +12,19 @@ class Document : public QObject
 public:
     explicit Document(QObject *parent = 0);
 
+    // IO:
     bool loadModel(QString filename);
 
-    void drawModel(QString name, QWidget * widget);
+    // Visualization:
+    void drawModel(QString modelName, QWidget * widget);
 
+    // Append to models:
+    void createCurveFromPoints(QString modelName, QVector<QVector3D> &points);
+    void createSheetFromPoints(QString modelName, QVector<QVector3D> &points);
+
+    // Modify models:
+
+    // Stats:
     QString firstModelName();
 
 protected:

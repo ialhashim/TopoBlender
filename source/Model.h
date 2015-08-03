@@ -13,6 +13,9 @@ public:
 
     void draw(Viewer * glwidget);
 
+    void createCurveFromPoints(QVector<QVector3D> &points);
+    void createSheetFromPoints(QVector<QVector3D> &points);
+
 signals:
 
 public slots:

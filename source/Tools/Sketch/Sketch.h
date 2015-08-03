@@ -2,6 +2,8 @@
 #include "Tool.h"
 #include "SketchView.h"
 
+namespace Ui{ class SketchToolsWidget; }
+
 class Sketch : public Tool
 {
     Q_OBJECT
@@ -14,6 +16,7 @@ public:
 
     Document * document;
 
+    Ui::SketchToolsWidget * toolsWidget;
 public slots:
     void resizeViews();
 };

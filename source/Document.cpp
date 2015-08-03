@@ -24,6 +24,18 @@ void Document::drawModel(QString name, QWidget *widget)
     if(m != nullptr) m->draw(glwidget);
 }
 
+void Document::createCurveFromPoints(QString modelName, QVector<QVector3D> & points)
+{
+    auto m = getModel(modelName);
+    if(m != nullptr) m->createCurveFromPoints(points);
+}
+
+void Document::createSheetFromPoints(QString modelName, QVector<QVector3D> & points)
+{
+    auto m = getModel(modelName);
+    if(m != nullptr) m->createSheetFromPoints(points);
+}
+
 QString Document::firstModelName()
 {
     if(models.isEmpty()) return "";

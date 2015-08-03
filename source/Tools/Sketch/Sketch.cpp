@@ -1,4 +1,7 @@
+#include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsProxyWidget>
+#include "ui_Sketch.h"
 
 #include "Sketch.h"
 #include "Viewer.h"
@@ -14,13 +17,35 @@ Sketch::Sketch(Document * document, const QRectF &bounds) : document(document)
 
 void Sketch::init()
 {
+    // Add four views
     int numViews = 4;
-
     for(int i = 0; i < numViews; i++){
         auto type = SketchViewType(SketchViewType::VIEW_TOP + i);
         auto view = new SketchView(document, this, type);
         views << view;
     }
+
+    // Add sketching UI elements
+    auto toolsWidgetContainer = new QWidget();
+    toolsWidget = new Ui::SketchToolsWidget();
+    toolsWidget->setupUi(toolsWidgetContainer);
+    auto toolsWidgetProxy = scene()->addWidget(toolsWidgetContainer);
+
+    // Connect UI with sketch views
+    {
+        connect(toolsWidget->curveButton, &QPushButton::pressed, [&](){
+            for(auto & v : views) v->sketchOp = SKETCH_CURVE;
+        });
+
+        connect(toolsWidget->sheetButton, &QPushButton::pressed, [&](){
+            for(auto & v : views) v->sketchOp = SKETCH_SHEET;
+        });
+    }
+
+    // Place in bottom left corner
+    auto delta = toolsWidgetProxy->sceneBoundingRect().bottomLeft() -
+            scene()->views().front()->rect().bottomLeft();
+    toolsWidgetProxy->moveBy(-delta.x(), -delta.y());
 }
 
 void Sketch::resizeViews()
