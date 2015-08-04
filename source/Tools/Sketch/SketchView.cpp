@@ -166,7 +166,8 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
             glwidget->drawLines(lines, color, cameraMatrix, "grid_lines");
         }
 
-        glwidget->drawPoints(sketchPoints, Qt::red, cameraMatrix, true);
+        // Visualize sketching
+        glwidget->drawPoints(sketchPoints, sketchOp == DEFORM_SKETCH ? Qt::green : Qt::red, cameraMatrix, true);
 
         bool isVisualizeSketchPlane = false;
         if(sketchPlane != nullptr && isVisualizeSketchPlane)
@@ -183,13 +184,11 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     // Simple rectangle for sketching sheets
     if(leftButtonDown && sketchOp == SKETCH_SHEET)
     {
-        auto c1 = worldToScreen(sketchPoints.front());
-        auto c2 = worldToScreen(sketchPoints.back());
-        QRectF r(QPointF(c1.x(),c1.y()), QPointF(c2.x(),c2.y()));
+        QRectF r(buttonDownCursorPos, mouseMoveCursorPos);
 
-        painter->setPen(QPen(Qt::blue,2));
-        painter->drawRect(r);
         painter->fillRect(r, QColor(0,0,255,128));
+        painter->setPen(QPen(Qt::blue,3));
+        painter->drawRect(r);
     }
 
 	// Foreground stuff
@@ -222,12 +221,6 @@ void SketchView::prePaint(QPainter * painter, QWidget *)
 
 void SketchView::postPaint(QPainter * painter, QWidget *)
 {
-    // Sketching visualization
-    {
-        painter->setPen(QPen(Qt::yellow, 3));
-        //painter->drawPolyline(QPolygonF(sketchPoints));
-    }
-
 	// View's title
     {
         painter->setPen(QPen(Qt::white));
@@ -297,6 +290,11 @@ QMatrix4x4 SketchView::defaultOrthoViewMatrix(QVector3D & eye, int type, int w, 
     return pvMatrix;
 }
 
+QVector3D SketchView::screenToWorld(QPointF point2D)
+{
+    return screenToWorld(QVector3D(point2D.x(), point2D.y(), 0));
+}
+
 QVector3D SketchView::screenToWorld(QVector3D point2D)
 {
     float x = (2.0 * point2D.x() * (1.0/rect.width())) - 1.0;
@@ -356,8 +354,7 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
     // Sketching
     if(leftButtonDown)
     {
-        QVector3D screenPos(event->pos().x(), event->pos().y(), 0);
-        auto worldPos = screenToWorld(screenPos);
+        auto worldPos = screenToWorld(event->pos());
 
         if(sketchOp == SKETCH_CURVE)
         {
@@ -366,7 +363,12 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == SKETCH_SHEET)
         {
-            sketchPoints.back() = toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+
+        }
+
+        if(sketchOp == DEFORM_SKETCH)
+        {
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
         }
     }
 
@@ -405,13 +407,12 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == SKETCH_SHEET)
         {
-            sketchPoints.resize(2);
+            sketchPoints.clear();
+        }
 
-            QVector3D screenPos(event->pos().x(), event->pos().y(), 0);
-            auto worldPos = screenToWorld(screenPos);
-
-            sketchPoints.front() = toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
-            sketchPoints.back() = sketchPoints.front();
+        if(sketchOp == DEFORM_SKETCH)
+        {
+            sketchPoints.clear();
         }
     }
 
@@ -432,7 +433,19 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == SKETCH_SHEET)
         {
+            QRectF r(buttonDownCursorPos, mouseMoveCursorPos);
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.topLeft()))));
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.topRight()))));
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.bottomLeft()))));
             document->createSheetFromPoints(document->firstModelName(), sketchPoints);
+        }
+
+        if(sketchOp == DEFORM_SKETCH)
+        {
+            auto guidePoints = sketchPoints;
+            guidePoints.push_front(toQVector3D(sketchPlane->normal()));
+
+            document->modifyLastAdded(document->firstModelName(), guidePoints);
         }
     }
 

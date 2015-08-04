@@ -518,6 +518,8 @@ void Viewer::drawPlane(QVector3D normal, QVector3D origin, QMatrix4x4 camera)
 void Viewer::drawTriangles(QColor useColor, const QVector<QVector3D> &points,
                            const QVector<QVector3D> &normals, QMatrix4x4 pvm)
 {
+    if(points.size() < 3 || normals.size() < 3) return;
+
     // Draw meshes:
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);

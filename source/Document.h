@@ -14,6 +14,7 @@ public:
 
     // IO:
     bool loadModel(QString filename);
+    void createModel(QString modelName);
 
     // Visualization:
     void drawModel(QString modelName, QWidget * widget);
@@ -23,6 +24,8 @@ public:
     void createSheetFromPoints(QString modelName, QVector<QVector3D> &points);
 
     // Modify models:
+    void modifyLastAdded(QString modelName, QVector<QVector3D> &guidePoints);
+    void generateSurface(QString modelName, double offset);
 
     // Stats:
     QString firstModelName();

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <QObject>
-
 #include "ShapeGraph.h"
-#include "Viewer.h"
+
+class Viewer;
 
 class Model : public QObject, public Structure::ShapeGraph
 {
@@ -16,6 +16,11 @@ public:
     void createCurveFromPoints(QVector<QVector3D> &points);
     void createSheetFromPoints(QVector<QVector3D> &points);
 
+    void modifyLastAdded(QVector<QVector3D> &guidePoints);
+
+    void generateSurface(double offset);
+
+    Structure::Node * lastAddedNode;
 signals:
 
 public slots:

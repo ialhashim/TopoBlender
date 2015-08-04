@@ -24,7 +24,7 @@ HEADERS  += mainwindow.h \
             Camera.h \
             Document.h \
             Model.h \
-    GeometryHelper.h
+            GeometryHelper.h
 
 # Sketch tool
 SOURCES +=  Tools/Sketch/Sketch.cpp \
@@ -50,6 +50,15 @@ win32{
 # C++11 support on linux
 linux-g++{ CONFIG += c++11 warn_off }
 
+# OpenMP
+win32{
+    QMAKE_CXXFLAGS *= /openmp
+}
+unix:!mac{
+    QMAKE_CXXFLAGS *= -fopenmp
+    LIBS += -lgomp
+}
+
 ### GeoTopo Libraries
 
 # Build flag
@@ -70,5 +79,8 @@ INCLUDEPATH += ../../GeoTopo/source/external/SurfaceMesh ../../GeoTopo/source/ex
 # NURBS library
 LIBS += -L$$PWD/../../GeoTopo/source/NURBS/lib/$$CFG -lNURBS
 INCLUDEPATH += ../../GeoTopo/source/NURBS
+
+# SDF library
+INCLUDEPATH += external/SDFGen
 
 linux-g++{ LIBS += -lGLU }

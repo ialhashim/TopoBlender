@@ -32,7 +32,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Create document object that has shapes
     auto document = new Document();
-    document->loadModel("C:/Temp/ChairBasic1/SimpleChair1.xml");
+    //document->loadModel("C:/Temp/ChairBasic1/SimpleChair1.xml");
+    document->createModel("untitled.xml");
 
     // Add tools window
     auto modifiers = new ModifiersPanel();

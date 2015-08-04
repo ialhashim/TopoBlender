@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>159</width>
-    <height>191</height>
+    <height>260</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -54,32 +54,6 @@ QGroupBox{ color:white; }</string>
    <property name="spacing">
     <number>3</number>
    </property>
-   <item row="1" column="0">
-    <widget class="QGroupBox" name="modifyBox">
-     <property name="title">
-      <string>Modify</string>
-     </property>
-     <property name="flat">
-      <bool>true</bool>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="1">
-       <widget class="QPushButton" name="replicateButton">
-        <property name="text">
-         <string>Replicate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="deformButton">
-        <property name="text">
-         <string>Deform</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
    <item row="0" column="0">
     <widget class="QGroupBox" name="sketchBox">
      <property name="title">
@@ -106,7 +80,7 @@ QGroupBox{ color:white; }</string>
      </layout>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <widget class="QGroupBox" name="labelBox">
      <property name="title">
       <string>Label</string>
@@ -117,6 +91,51 @@ QGroupBox{ color:white; }</string>
      <layout class="QGridLayout" name="gridLayout_4">
       <item row="0" column="0">
        <widget class="QComboBox" name="comboBox"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="modifyBox">
+     <property name="title">
+      <string>Modify</string>
+     </property>
+     <property name="flat">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="1">
+       <widget class="QPushButton" name="replicateButton">
+        <property name="text">
+         <string>Replicate</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QPushButton" name="deformButton">
+        <property name="text">
+         <string>Deform</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="surfaceBox">
+     <property name="title">
+      <string>Surface</string>
+     </property>
+     <property name="flat">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="0" column="0">
+       <widget class="QPushButton" name="surfaceButton">
+        <property name="text">
+         <string>Generate</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

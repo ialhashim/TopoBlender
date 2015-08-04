@@ -128,7 +128,6 @@ static inline QVector<QVector3D> uniformResampleCount (QVector<QVector3D> points
     return result;
 }
 
-// based on code by Kenshi Takayama
 static inline QVector<QVector3D> smooth(QVector<QVector3D> points, int num_iter = 1, bool is_loop = false,
                                         double weight_first_order = 1.0, double weight_second_order = 0.0, double damping = 0.5){
     auto size = points.size();
@@ -157,7 +156,7 @@ static inline QVector<QVector3D> smooth(QVector<QVector3D> points, int num_iter 
 
             auto p_target = (weight_first_order * p_first_order +
                              weight_second_order * p_second_order)
-                            / (weight_first_order + weight_second_order);
+                    / (weight_first_order + weight_second_order);
 
             points[i] = damping * points_old[i] + (1 - damping) * p_target;
         }
@@ -165,4 +164,41 @@ static inline QVector<QVector3D> smooth(QVector<QVector3D> points, int num_iter 
 
     return points;
 }
+
+static inline QVector3D pointAt(QVector<QVector3D> points, double arc_length_parameter){
+    if(points.empty()) return QVector3D();
+
+    if (arc_length_parameter <= 0) return points.front();
+    if (arc_length_parameter >= 1) return points.back();
+
+    auto length = [&](QVector<QVector3D> points){
+        double result = 0;
+        for(int i = 1; i < points.size(); i++)
+            result += (points[i] - points[i-1]).length();
+        return result;
+    };
+
+    const int NN = points.size();
+    const double target_length = length(points) * arc_length_parameter;
+
+    double length_acc = 0;
+    for (int i = 0; i < NN; ++i) {
+        if (i == NN - 1) break;
+
+        auto& p0 = points[i];
+        auto& p1 = points[(i + 1) % NN];
+
+        double segment_length = (p1 - p0).length();
+        if (length_acc <= target_length && target_length < length_acc + segment_length) {
+            double t = (target_length - length_acc) / segment_length;
+            return (1 - t) * p0 + t * p1;
+        }
+
+        length_acc += segment_length;
+    }
+
+    // something wrong happened
+    return QVector3D();
+}
+
 }

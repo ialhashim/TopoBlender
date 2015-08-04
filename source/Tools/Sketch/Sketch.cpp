@@ -5,6 +5,7 @@
 
 #include "Sketch.h"
 #include "Viewer.h"
+#include "Document.h"
 
 Sketch::Sketch(Document * document, const QRectF &bounds) : document(document)
 {
@@ -33,16 +34,33 @@ void Sketch::init()
 
     // Connect UI with sketch views
     {
-        connect(toolsWidget->curveButton, &QPushButton::pressed, [&](){
-            for(auto & v : views) v->sketchOp = SKETCH_CURVE;
-        });
+        // Sketching new parts
+        {
+            connect(toolsWidget->curveButton, &QPushButton::pressed, [&](){
+                for(auto & v : views) v->sketchOp = SKETCH_CURVE;
+            });
 
-        connect(toolsWidget->sheetButton, &QPushButton::pressed, [&](){
-            for(auto & v : views) v->sketchOp = SKETCH_SHEET;
-        });
+            connect(toolsWidget->sheetButton, &QPushButton::pressed, [&](){
+                for(auto & v : views) v->sketchOp = SKETCH_SHEET;
+            });
+        }
+
+        // Deforming existing parts
+        {
+            connect(toolsWidget->deformButton, &QPushButton::pressed, [&](){
+                for(auto & v : views) v->sketchOp = DEFORM_SKETCH;
+            });
+        }
+
+        // Surface
+        {
+            connect(toolsWidget->surfaceButton, &QPushButton::pressed, [&](){
+                document->generateSurface(document->firstModelName(), 0.03);
+            });
+        }
     }
 
-    // Place in bottom left corner
+    // Place at bottom left corner
     auto delta = toolsWidgetProxy->sceneBoundingRect().bottomLeft() -
             scene()->views().front()->rect().bottomLeft();
     toolsWidgetProxy->moveBy(-delta.x(), -delta.y());

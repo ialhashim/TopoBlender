@@ -11,8 +11,8 @@ namespace Eigen{ class Camera; class Trackball; class Plane; }
 enum SketchViewType{ VIEW_TOP, VIEW_FRONT, VIEW_LEFT, VIEW_CAMERA };
 static QString SketchViewTypeNames[] = {"Top", "Front", "Left", "Camera"};
 
-enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET };
-static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet"};
+enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET, DEFORM_SKETCH };
+static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet", "Deform"};
 
 class SketchView : public QGraphicsObject
 {
@@ -46,6 +46,7 @@ public:
                                              float zoomFactor, QMatrix4x4 & proj, QMatrix4x4 & view);
 
     QVector3D screenToWorld(QVector3D point2D);
+    QVector3D screenToWorld(QPointF point2D);
     QVector3D worldToScreen(QVector3D point3D);
 
     // Sketching stuff

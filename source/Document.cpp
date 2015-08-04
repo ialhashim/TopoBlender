@@ -15,6 +15,13 @@ bool Document::loadModel(QString filename)
     return isLoaded;
 }
 
+void Document::createModel(QString modelName)
+{
+    auto model = QSharedPointer<Model>(new Model());
+    model->loadFromFile(modelName);
+    models << model;
+}
+
 void Document::drawModel(QString name, QWidget *widget)
 {
     auto glwidget = (Viewer*)widget;
@@ -34,6 +41,18 @@ void Document::createSheetFromPoints(QString modelName, QVector<QVector3D> & poi
 {
     auto m = getModel(modelName);
     if(m != nullptr) m->createSheetFromPoints(points);
+}
+
+void Document::modifyLastAdded(QString modelName, QVector<QVector3D> &guidePoints)
+{
+    auto m = getModel(modelName);
+    if(m != nullptr) m->modifyLastAdded(guidePoints);
+}
+
+void Document::generateSurface(QString modelName, double offset)
+{
+    auto m = getModel(modelName);
+    if(m != nullptr) m->generateSurface(offset);
 }
 
 QString Document::firstModelName()
