@@ -2,6 +2,7 @@
 
 #include <QVector3D>
 #include <QStack>
+#include "weld.h"
 
 namespace GeometryHelper{
 static inline double getSqSegDist(QVector3D p, QVector3D p1, QVector3D p2){
@@ -199,6 +200,28 @@ static inline QVector3D pointAt(QVector<QVector3D> points, double arc_length_par
 
     // something wrong happened
     return QVector3D();
+}
+
+template<class Vector3, class Mesh>
+inline void meregeVertices(Mesh * m){
+	std::vector<Vector3> vertices;
+	auto points = m->vertex_coordinates();
+	for (auto v : m->vertices()) vertices.push_back(points[v]);
+
+	std::vector<size_t> xrefs;
+	weld(vertices, xrefs, std::hash_Vector3d(), std::equal_to<Vector3>());
+
+	std::vector< std::vector<Mesh::Vertex> > faces;
+	for (auto f : m->faces()){
+		std::vector<Mesh::Vertex> face;
+		for (auto v : m->vertices(f)) face.push_back(Mesh::Vertex(xrefs[v.idx()]));
+		faces.push_back(face);
+	}
+
+	m->clear();
+
+	for (auto v : vertices) m->add_vertex(v);
+	for (auto face : faces) m->add_face(face);
 }
 
 }

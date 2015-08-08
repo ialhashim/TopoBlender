@@ -18,7 +18,7 @@ public:
 
     void modifyLastAdded(QVector<QVector3D> &guidePoints);
 
-    void generateSurface(double offset);
+    void generateSurface(double offset = 0.025);
 
     Structure::Node * lastAddedNode;
 signals:

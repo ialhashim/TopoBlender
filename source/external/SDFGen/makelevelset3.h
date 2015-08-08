@@ -12,11 +12,11 @@ namespace SDFGen{
 // be to the closest triangle - just one nearby.
 void make_level_set3(const std::vector<Vec3ui> &tri, const std::vector<Vec3f> &x,
                      const Vec3f &origin, float dx, int nx, int ny, int nz,
-                     Array3f &phi, const int exact_band=1);
-}
+					 Array3f &phi, bool isSigned = true, float limit_distance = std::numeric_limits<float>::max(), const int exact_band = 1);
 
 #ifdef SDFGEN_HEADER_ONLY
 #include "makelevelset3.cpp"
 #endif
+}
 
 #endif

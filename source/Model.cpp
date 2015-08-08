@@ -2,6 +2,8 @@
 #include "Viewer.h"
 #include "GeometryHelper.h"
 
+#include "weld.h"
+
 #define SDFGEN_HEADER_ONLY
 #include "makelevelset3.h"
 #include "marchingcubes.h"
@@ -31,7 +33,7 @@ void Model::createCurveFromPoints(QVector<QVector3D> & points)
     // Add curve
     lastAddedNode = this->addNode(newCurve);
 
-    generateSurface(0.03);
+    generateSurface();
 }
 
 void Model::createSheetFromPoints(QVector<QVector3D> &points)
@@ -57,7 +59,7 @@ void Model::createSheetFromPoints(QVector<QVector3D> &points)
     // Add sheet
     lastAddedNode = this->addNode(newSheet);
 
-    generateSurface(0.03);
+    generateSurface();
 }
 
 void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
@@ -127,16 +129,17 @@ void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
         sheet->surface.quads.clear();
     }
 
-    generateSurface(0.03);
+    generateSurface();
 }
 
 void Model::generateSurface(double offset)
 {
     if(lastAddedNode == nullptr) return;
 
-    //for(auto n : nodes)
     auto n = lastAddedNode;
     {
+		n->vis_property["isSmoothShading"].setValue(true);
+
         double dx = 0.015;
 
         std::vector<SDFGen::Vec3f> vertList;
@@ -217,10 +220,12 @@ void Model::generateSurface(double offset)
         max_box += unit*padding*dx;
         SDFGen::Vec3ui sizes = SDFGen::Vec3ui((max_box - min_box)/dx);
 
-        Array3f phi_grid;
-        SDFGen::make_level_set3(faceList, vertList, min_box, dx, sizes[0], sizes[1], sizes[2], phi_grid);
+		if (faceList.empty() || vertList.empty()) return;
 
-        ScalarVolume volume = initScalarVolume(sizes[0],sizes[1],sizes[2], 1e6);
+        Array3f phi_grid;
+        SDFGen::make_level_set3(faceList, vertList, min_box, dx, sizes[0], sizes[1], sizes[2], phi_grid, false, offset * 2.0);
+
+		ScalarVolume volume = initScalarVolume(sizes[0], sizes[1], sizes[2], (sizes[0] + sizes[1] + sizes[2])*dx);
 
         #pragma omp for
         for(int i = 0; i < sizes[0]; i++){
@@ -231,6 +236,7 @@ void Model::generateSurface(double offset)
             }
         }
 
+		// Mesh surface from volume using marching cubes
         auto mesh = march(volume, offset);
 
         QSharedPointer<SurfaceMeshModel> newMesh = QSharedPointer<SurfaceMeshModel>(new SurfaceMeshModel());
@@ -242,15 +248,14 @@ void Model::generateSurface(double offset)
             std::vector<SurfaceMeshModel::Vertex> verts;
             for(auto p : tri){
                 Vector3 voxel(p.x, p.y, p.z);
-
                 Vector3 pos = (voxel * dx) + Vector3(min_box[0],min_box[1],min_box[2]) + halfUnite;
-
                 newMesh->add_vertex(pos);
-
                 verts.push_back(SurfaceMeshModel::Vertex(vi++));
             }
             newMesh->add_face(verts);
         }
+
+		GeometryHelper::meregeVertices<Vector3>(newMesh.data());
 
         newMesh->updateBoundingBox();
         newMesh->update_face_normals();
@@ -361,22 +366,28 @@ void Model::draw(Viewer *glwidget)
         auto nodeColor = n->vis_property["color"].value<QColor>();
         auto ncolor = Eigen::Vector3f(nodeColor.redF(), nodeColor.greenF(), nodeColor.blueF());
 
+		bool isSmoothShading = n->vis_property["isSmoothShading"].toBool();
+
         // Pack geometry, normals, and colors
         QVector<GLfloat> vertex, normal, color;
 
         auto mesh_points = mesh->vertex_coordinates();
-        //auto mesh_normals = mesh->vertex_normals();
+        auto mesh_normals = mesh->vertex_normals();
         auto mesh_fnormals = mesh->face_normals();
 
         int v_count = 0;
 
+		// Pack mesh faces
         for(auto f : mesh->faces()){
             for(auto vf : mesh->vertices(f)){
                 for(int i = 0; i < 3; i++){
+					// Coordinate
                     vertex << mesh_points[vf][i];
-                    //normal << mesh_normals[vf][i];
-                    normal << mesh_fnormals[f][i];
-                    color << ncolor[i];
+					// Color
+					color << ncolor[i];		
+					// Normal
+					if (isSmoothShading) normal << mesh_fnormals[f][i];
+					else normal << mesh_normals[vf][i];
                     v_count++;
                 }
             }
