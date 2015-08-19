@@ -58,6 +58,13 @@ void Sketch::init()
                 document->generateSurface(document->firstModelName(), 0.03);
             });
         }
+
+		// Save shape
+		{
+			connect(toolsWidget->saveButton, &QPushButton::pressed, [&](){
+				document->saveModel(document->firstModelName());
+			});
+		}
     }
 
     // Place at bottom left corner

@@ -13,7 +13,8 @@ SOURCES +=  main.cpp\
             Tool.cpp \
             Viewer.cpp \
             Document.cpp \
-            Model.cpp
+            Model.cpp \
+    ModelMesher.cpp
 
 HEADERS  += mainwindow.h \
             GraphicsView.h \
@@ -24,7 +25,8 @@ HEADERS  += mainwindow.h \
             Camera.h \
             Document.h \
             Model.h \
-            GeometryHelper.h
+            GeometryHelper.h \
+    ModelMesher.h
 
 # Sketch tool
 SOURCES +=  Tools/Sketch/Sketch.cpp \

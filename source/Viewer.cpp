@@ -85,6 +85,9 @@ void Viewer::initializeGL()
             "{\n"
             "   color.a = clamp(0.5 - color.a * length(pos),0,1);\n"
             "   gl_FragColor = color; \n"
+			"   if(pos.x + pos.y == 0) gl_FragColor.a *= 3.0; \n"
+			"   if(pos.z + pos.y == 0) gl_FragColor.a *= 3.0; \n"
+			"   if(pos.z + pos.x == 0) gl_FragColor.a *= 3.0; \n"
             "   if (gl_FragColor.a < 0.01)discard;"
             "}");
         program->link();

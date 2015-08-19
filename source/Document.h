@@ -15,6 +15,7 @@ public:
     // IO:
     bool loadModel(QString filename);
     void createModel(QString modelName);
+	void saveModel(QString modelName);
 
     // Visualization:
     void drawModel(QString modelName, QWidget * widget);

@@ -22,6 +22,16 @@ void Document::createModel(QString modelName)
     models << model;
 }
 
+void Document::saveModel(QString modelName)
+{
+	auto m = getModel(modelName);
+	if (m != nullptr){
+		Structure::ShapeGraph * model = m;
+		QString fileName = model->property.contains("name") ? model->property["name"].toString() : QString("%1.xml").arg(modelName);
+		m->saveToFile(fileName);
+	}
+}
+
 void Document::drawModel(QString name, QWidget *widget)
 {
     auto glwidget = (Viewer*)widget;

@@ -351,10 +351,10 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         }
     }
 
-    // Sketching
+    // Freeform Sketching
     if(leftButtonDown)
-    {
-        auto worldPos = screenToWorld(event->pos());
+	{
+		auto worldPos = screenToWorld(event->pos());
 
         if(sketchOp == SKETCH_CURVE)
         {
@@ -371,6 +371,27 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
             sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
         }
     }
+
+	// Constrained sketching
+	if (leftButtonDown && event->modifiers().testFlag(Qt::ShiftModifier))
+	{
+		auto startWorldPos = screenToWorld(buttonDownCursorPos);
+		auto worldPos = screenToWorld(event->pos());
+
+		if (sketchOp == SKETCH_CURVE)
+		{
+			sketchPoints.clear();
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(startWorldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(worldPos)));
+		}
+
+		if (sketchOp == DEFORM_SKETCH)
+		{
+			sketchPoints.clear();
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(startWorldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(worldPos)));
+		}
+	}
 
     scene()->update();
 }
@@ -455,6 +476,8 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 
 	messages.clear(); messages << "Mouse released." <<
 		QString("%1,%2").arg(buttonUpCursorPos.x()).arg(buttonUpCursorPos.y());
+
+	sketchPoints.clear();
 
     scene()->update();
 }
