@@ -4,6 +4,8 @@
 #include <QMatrix4x4>
 #include <QGraphicsSceneMouseEvent>
 
+#include "SketchManipulatorTool.h"
+
 class Document;
 
 namespace Eigen{ class Camera; class Trackball; class Plane; }
@@ -11,8 +13,8 @@ namespace Eigen{ class Camera; class Trackball; class Plane; }
 enum SketchViewType{ VIEW_TOP, VIEW_FRONT, VIEW_LEFT, VIEW_CAMERA };
 static QString SketchViewTypeNames[] = {"Top", "Front", "Left", "Camera"};
 
-enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET, DEFORM_SKETCH };
-static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet", "Deform"};
+enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET, DEFORM_SKETCH, TRANSFORM_PART };
+static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet", "Deform", "Transform Part"};
 
 class SketchView : public QGraphicsObject
 {
@@ -34,7 +36,7 @@ public:
     QRectF boundingRect() const { return this->rect; }
     void setRect(const QRectF & newRect){ this->rect = newRect; }
 
-    // Camera movment
+    // Camera movement
     Eigen::Camera* camera;
     Eigen::Trackball* trackball;
 
@@ -51,10 +53,15 @@ public:
 
     // Sketching stuff
     Eigen::Plane * sketchPlane;
-    SketchViewOp sketchOp;
-    QVector<QVector3D> sketchPoints;
+	QVector<QVector3D> sketchPoints;
+	SketchViewOp sketchOp;
+
+	SketchManipulatorTool * manTool;
 
     QStringList messages;
+
+public slots:
+	void setSketchOp(SketchViewOp toSketchOp);
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);

@@ -37,20 +37,27 @@ void Sketch::init()
         // Sketching new parts
         {
             connect(toolsWidget->curveButton, &QPushButton::pressed, [&](){
-                for(auto & v : views) v->sketchOp = SKETCH_CURVE;
+                for(auto & v : views) v->setSketchOp(SKETCH_CURVE);
             });
 
             connect(toolsWidget->sheetButton, &QPushButton::pressed, [&](){
-                for(auto & v : views) v->sketchOp = SKETCH_SHEET;
+				for (auto & v : views) v->setSketchOp(SKETCH_SHEET);
             });
         }
 
         // Deforming existing parts
         {
             connect(toolsWidget->deformButton, &QPushButton::pressed, [&](){
-                for(auto & v : views) v->sketchOp = DEFORM_SKETCH;
+				for (auto & v : views) v->setSketchOp(DEFORM_SKETCH);
             });
         }
+
+		// Transform parts
+		{
+			connect(toolsWidget->transformButton, &QPushButton::pressed, [&](){
+				for (auto & v : views) v->setSketchOp(TRANSFORM_PART);
+			});
+		}
 
         // Surface
         {

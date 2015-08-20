@@ -14,9 +14,14 @@ SOURCES +=  main.cpp\
             Viewer.cpp \
             Document.cpp \
             Model.cpp \
-    ModelMesher.cpp
+            ModelMesher.cpp \
+# Sketch tool
+            Tools/Sketch/Sketch.cpp \
+            Tools/Sketch/SketchView.cpp \
+            Tools/Sketch/SketchManipulatorTool.cpp
 
 HEADERS  += mainwindow.h \
+            GeometryHelper.h \
             GraphicsView.h \
             GraphicsScene.h \
             ModifiersPanel.h \
@@ -25,15 +30,11 @@ HEADERS  += mainwindow.h \
             Camera.h \
             Document.h \
             Model.h \
-            GeometryHelper.h \
-    ModelMesher.h
-
+            ModelMesher.h \
 # Sketch tool
-SOURCES +=  Tools/Sketch/Sketch.cpp \
-            Tools/Sketch/SketchView.cpp
-
-HEADERS  += Tools/Sketch/Sketch.h \
-            Tools/Sketch/SketchView.h
+            Tools/Sketch/Sketch.h \
+            Tools/Sketch/SketchView.h \
+            Tools/Sketch/SketchManipulatorTool.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \

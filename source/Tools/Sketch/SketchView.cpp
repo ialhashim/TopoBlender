@@ -13,8 +13,10 @@
 #include <QOpenGLFramebufferObject>
 
 #include "Document.h"
+#include "Model.h"
 
-QVector3D toQVector3D(Eigen::Vector3f p){ return QVector3D(p[0],p[1],p[2]); }
+template<class Vector3>
+QVector3D toQVector3D(Vector3 p){ return QVector3D(p[0], p[1], p[2]); }
 Eigen::Vector3f toVector3f(QVector3D p){ return Eigen::Vector3f(p[0],p[1],p[2]); }
 
 SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewType type) :
@@ -61,6 +63,13 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
         break;
     default: { sketchPlane = new Eigen::Plane(Eigen::Vector3f::UnitZ(), Eigen::Vector3f(0,0,0.5f)); break;}
     }
+
+	// Manipulator tool
+	manTool = new SketchManipulatorTool(this);
+	manTool->model = document->getModel(document->firstModelName());
+	manTool->setVisible(false);
+
+	manTool->model->connect(manTool, SIGNAL(transformChange(QMatrix4x4)), SLOT(transformActiveNodeGeometry(QMatrix4x4)));
 }
 
 SketchView::~SketchView()
@@ -254,6 +263,19 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
         painter->setPen(borderPen);
         painter->drawRect(this->boundingRect().adjusted(hbw, hbw, -hbw, -hbw));
     }
+
+	// Update manipulator tool
+	/*if (manTool->isVisible() && !this->isUnderMouse())
+	{
+		auto model = document->getModel(document->firstModelName());
+		if (model != nullptr) {
+			auto n = model->lastAddedNode;
+			if (n != nullptr){
+				auto screenPos = worldToScreen(toQVector3D(n->center()));
+				manTool->setPos(screenPos.toPointF() - manTool->boundingRect().center());
+			}
+		}
+	}*/
 }
 
 QMatrix4x4 SketchView::defaultOrthoViewMatrix(QVector3D & eye, int type, int w, int h,
@@ -312,6 +334,30 @@ QVector3D SketchView::worldToScreen(QVector3D point3D)
                      (0.0+p.z()));
 }
 
+void SketchView::setSketchOp(SketchViewOp toSketchOp)
+{
+	this->sketchOp = toSketchOp;
+
+	// Manipulator tool
+	if (this->sketchOp == TRANSFORM_PART && type != VIEW_CAMERA)
+	{
+		auto model = document->getModel(document->firstModelName());
+		if (model != nullptr) {
+			auto n = model->activeNode;
+			if (n != nullptr) {
+				// Place manipulator at center of part
+				auto screenPos = worldToScreen(toQVector3D(n->center()));
+				manTool->setPos(screenPos.toPointF() - manTool->boundingRect().center());
+				manTool->setVisible(true);
+			}
+		}
+	}
+	else
+	{
+		manTool->setVisible(false);
+	}
+}
+
 void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 {
 	mouseMoveCursorPos = event->pos();
@@ -351,7 +397,7 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         }
     }
 
-    // Freeform Sketching
+    // Free form Sketching
     if(leftButtonDown)
 	{
 		auto worldPos = screenToWorld(event->pos());
@@ -370,6 +416,11 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         {
             sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
         }
+
+		if(sketchOp == TRANSFORM_PART)
+		{
+
+		}
     }
 
 	// Constrained sketching
@@ -435,6 +486,11 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
         {
             sketchPoints.clear();
         }
+
+		if(sketchOp == TRANSFORM_PART)
+		{
+
+		}
     }
 
     scene()->update();

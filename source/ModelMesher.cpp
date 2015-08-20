@@ -17,8 +17,8 @@ ModelMesher::ModelMesher(Model *model) : m(model)
 
 void ModelMesher::generateOffsetSurface(double offset)
 {
-    if(m->lastAddedNode == nullptr) return;
-    auto n = m->lastAddedNode;
+    if(m->activeNode == nullptr) return;
+    auto n = m->activeNode;
     n->vis_property["isSmoothShading"].setValue(true);
 
     double dx = 0.015;
@@ -150,8 +150,8 @@ void ModelMesher::generateOffsetSurface(double offset)
 
 void ModelMesher::generateRegularSurface(double offset)
 {
-    if(m->lastAddedNode == nullptr) return;
-    auto n = m->lastAddedNode;
+    if(m->activeNode == nullptr) return;
+    auto n = m->activeNode;
     n->vis_property["isSmoothShading"].setValue(true);
 
     Structure::Curve* curve = dynamic_cast<Structure::Curve*>(n);
@@ -171,8 +171,6 @@ void ModelMesher::generateRegularSurface(double offset)
 		// Compute frames & construct grid
 		for (int i = 0; i < numSegments; i++)
         {
-			double u = double(i) / (numSegments - 1);
-
 			// Frames
 			auto point = rmf.point[i];
 			auto normal = rmf.U[i].r;

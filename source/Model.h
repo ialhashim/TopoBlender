@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QMatrix4x4>
 #include "ShapeGraph.h"
 
 class Viewer;
@@ -20,8 +21,10 @@ public:
 
     void generateSurface(double offset = 0.025);
 
-    Structure::Node * lastAddedNode;
-signals:
+    Structure::Node * activeNode;
+	void storeActiveNodeGeometry();
 
-public slots:
+public slots :
+	void transformActiveNodeGeometry(QMatrix4x4 transform);
+signals:
 };

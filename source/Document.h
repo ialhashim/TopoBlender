@@ -31,9 +31,11 @@ public:
     // Stats:
     QString firstModelName();
 
+	// Direct access to models
+	Model * getModel(QString name);
+
 protected:
     QVector< QSharedPointer<Model> > models;
-    Model * getModel(QString name);
 
 signals:
 

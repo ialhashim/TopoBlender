@@ -6,14 +6,16 @@ using namespace opengp;
 
 #include "ModelMesher.h"
 
-Model::Model(QObject *parent) : QObject(parent), Structure::ShapeGraph(""), lastAddedNode(nullptr)
+Q_DECLARE_METATYPE(Array1D_Vector3);
+
+Model::Model(QObject *parent) : QObject(parent), Structure::ShapeGraph(""), activeNode(nullptr)
 {
 
 }
 
 void Model::createCurveFromPoints(QVector<QVector3D> & points)
 {
-    if(points.empty()) return;
+    if(points.size() < 2) return;
 
     // Nicer curve
     points = GeometryHelper::smooth(GeometryHelper::uniformResampleCount(points, 20), 5);
@@ -27,14 +29,14 @@ void Model::createCurveFromPoints(QVector<QVector3D> & points)
     auto newCurve = new Structure::Curve(newCurveGeometry, newCurveID);
 
     // Add curve
-    lastAddedNode = this->addNode(newCurve);
+    activeNode = this->addNode(newCurve);
 
     generateSurface();
 }
 
 void Model::createSheetFromPoints(QVector<QVector3D> &points)
 {
-    if(points.empty()) return;
+	if (points.size() < 2) return;
 
     // Convert corner points to Vector3
     Array1D_Vector3 cp;
@@ -53,17 +55,17 @@ void Model::createSheetFromPoints(QVector<QVector3D> &points)
     auto newSheet = new Structure::Sheet(newSheetGeometry, newSheetID);
 
     // Add sheet
-    lastAddedNode = this->addNode(newSheet);
+    activeNode = this->addNode(newSheet);
 
     generateSurface();
 }
 
 void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
 {
-    if(guidePoints.empty() || lastAddedNode == nullptr) return;
+	if (guidePoints.size() < 2 || activeNode == nullptr) return;
 
-    Structure::Curve* curve = dynamic_cast<Structure::Curve*>(lastAddedNode);
-    Structure::Sheet* sheet = dynamic_cast<Structure::Sheet*>(lastAddedNode);
+    Structure::Curve* curve = dynamic_cast<Structure::Curve*>(activeNode);
+    Structure::Sheet* sheet = dynamic_cast<Structure::Sheet*>(activeNode);
 
     auto fp = guidePoints.takeFirst();
     Vector3 axis(fp.x(),fp.y(),fp.z());
@@ -272,3 +274,30 @@ void Model::draw(Viewer *glwidget)
     //glwidget->glDisable(GL_CULL_FACE);
 }
 
+void Model::storeActiveNodeGeometry()
+{
+	if (activeNode == nullptr) return;
+
+	// Store initial node and mesh geometries
+	auto n = activeNode;
+	n->property["restNodeGeometry"].setValue(n->controlPoints());
+	auto mesh = getMesh(n->id);
+	Array1D_Vector3 meshPoints;
+	for (auto v : mesh->vertices()) meshPoints.push_back(mesh->vertex_coordinates()[v]);
+	n->property["restMeshGeometry"].setValue(meshPoints);
+}
+
+void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
+{
+	if (activeNode == nullptr) return;
+	if (!activeNode->property.contains("restNodeGeometry")) return;
+
+	// Rest then apply transformation
+	auto n = activeNode;
+	n->setControlPoints(n->property["restNodeGeometry"].value<Array1D_Vector3>());
+	auto mesh = getMesh(n->id);
+	auto meshPoints = n->property["restMeshGeometry"].value<Array1D_Vector3>();
+	for (auto v : mesh->vertices()) mesh->vertex_coordinates()[v] = meshPoints[v.idx()];
+
+	this->transform(transform);
+}
