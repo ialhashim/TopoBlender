@@ -4,6 +4,8 @@
 #include <QStack>
 #include "weld.h"
 
+template<class Vector3> QVector3D toQVector3D(Vector3 p){ return QVector3D(p[0], p[1], p[2]); }
+
 namespace GeometryHelper{
 static inline double getSqSegDist(QVector3D p, QVector3D p1, QVector3D p2){
     float x = p1[0], y = p1[1], z = p1[2];

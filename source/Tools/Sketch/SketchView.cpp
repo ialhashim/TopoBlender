@@ -1,4 +1,5 @@
 #include "GraphicsScene.h"
+#include "GeometryHelper.h"
 
 #include "Sketch.h"
 #include "SketchView.h"
@@ -15,9 +16,7 @@
 #include "Document.h"
 #include "Model.h"
 
-template<class Vector3>
-QVector3D toQVector3D(Vector3 p){ return QVector3D(p[0], p[1], p[2]); }
-Eigen::Vector3f toVector3f(QVector3D p){ return Eigen::Vector3f(p[0],p[1],p[2]); }
+static Eigen::Vector3f toVector3(QVector3D p){ return Eigen::Vector3f(p[0], p[1], p[2]); }
 
 SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewType type) :
 QGraphicsObject(parent), rect(QRect(0, 0, 100, 100)), type(type), camera(nullptr), trackball(nullptr),
@@ -66,8 +65,9 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
 
 	// Manipulator tool
 	manTool = new SketchManipulatorTool(this);
-	manTool->model = document->getModel(document->firstModelName());
 	manTool->setVisible(false);
+	manTool->view = this;
+	manTool->model = document->getModel(document->firstModelName());
 
 	manTool->model->connect(manTool, SIGNAL(transformChange(QMatrix4x4)), SLOT(transformActiveNodeGeometry(QMatrix4x4)));
 }
@@ -404,7 +404,7 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == SKETCH_CURVE)
         {
-            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3(worldPos)) );
         }
 
         if(sketchOp == SKETCH_SHEET)
@@ -414,7 +414,7 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == DEFORM_SKETCH)
         {
-            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(worldPos)) );
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3(worldPos)) );
         }
 
 		if(sketchOp == TRANSFORM_PART)
@@ -432,19 +432,19 @@ void SketchView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 		if (sketchOp == SKETCH_CURVE)
 		{
 			sketchPoints.clear();
-			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(startWorldPos)));
-			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(worldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3(startWorldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3(worldPos)));
 		}
 
 		if (sketchOp == DEFORM_SKETCH)
 		{
 			sketchPoints.clear();
-			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(startWorldPos)));
-			sketchPoints << toQVector3D(sketchPlane->projection(toVector3f(worldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3(startWorldPos)));
+			sketchPoints << toQVector3D(sketchPlane->projection(toVector3(worldPos)));
 		}
 	}
 
-    scene()->update();
+    scene()->update(sceneBoundingRect());
 }
 
 void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
@@ -493,7 +493,7 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 		}
     }
 
-    scene()->update();
+	scene()->update(sceneBoundingRect());
 }
 
 void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
@@ -511,9 +511,9 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
         if(sketchOp == SKETCH_SHEET)
         {
             QRectF r(buttonDownCursorPos, mouseMoveCursorPos);
-            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.topLeft()))));
-            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.topRight()))));
-            sketchPoints << toQVector3D( sketchPlane->projection(toVector3f(screenToWorld(r.bottomLeft()))));
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3(screenToWorld(r.topLeft()))));
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3(screenToWorld(r.topRight()))));
+            sketchPoints << toQVector3D( sketchPlane->projection(toVector3(screenToWorld(r.bottomLeft()))));
             document->createSheetFromPoints(document->firstModelName(), sketchPoints);
         }
 
@@ -535,7 +535,7 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 
 	sketchPoints.clear();
 
-    scene()->update();
+	scene()->update(sceneBoundingRect());
 }
 
 void SketchView::wheelEvent(QGraphicsSceneWheelEvent * event)
@@ -557,5 +557,5 @@ void SketchView::wheelEvent(QGraphicsSceneWheelEvent * event)
 		camera->setTarget(t);
 	}
 
-    scene()->update();
+	scene()->update(sceneBoundingRect());
 }

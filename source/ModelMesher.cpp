@@ -2,8 +2,6 @@
 #include "Model.h"
 #include "GeometryHelper.h"
 
-#include "weld.h"
-
 #define SDFGEN_HEADER_ONLY
 #include "makelevelset3.h"
 #include "marchingcubes.h"

@@ -4,8 +4,11 @@
 #include <QGraphicsSceneMouseEvent>
 
 #include "Model.h"
+#include "SketchView.h"
+#include "GeometryHelper.h"
+#include "Camera.h"
 
-static QString ManipulationOpTitle[] = {"Translate", "Rotate", "Scale X", "Scale Y", "Scale XY"};
+static QString ManipulationOpTitle[] = {"Move", "Rotate", "Scale X", "Scale Y", "Scale"};
 
 SketchManipulatorTool::SketchManipulatorTool(QGraphicsItem *parent) : QGraphicsObject(parent), rect(QRect(0, 0, 200, 200)), manOp(TRANSLATE), leftButtonDown(false)
 {
@@ -49,14 +52,7 @@ void SketchManipulatorTool::paint(QPainter *painter, const QStyleOptionGraphicsI
         painter->setBrush(Qt::green);
         painter->setPen(QPen(Qt::green,1));
         painter->drawLine(r.center(), arrowheadRight.front());
-        painter->drawPolygon(arrowheadRight);
-
-        if(leftButtonDown && manOp == TRANSLATE)
-        {
-            auto delta = mouseMoveCursorPos - buttonDownCursorPos;
-            transform.setToIdentity();
-            transform.translate(delta.x(), delta.y(), 0);
-        }
+		painter->drawPolygon(arrowheadRight);
     }
 
     // Rotation arc
@@ -79,10 +75,9 @@ void SketchManipulatorTool::paint(QPainter *painter, const QStyleOptionGraphicsI
             delta *= 3.0;
 
             painter->setPen(QPen(QColor(0,0,255),5));
-            painter->drawArc(arcRect, startAngle - delta, spanAngle);
+			painter->drawArc(arcRect, startAngle - delta, spanAngle);
 
-            transform.setToIdentity();
-            transform.rotate(delta,1,0,0);
+			curDelta = delta;
         }
     }
 
@@ -155,8 +150,7 @@ void SketchManipulatorTool::paint(QPainter *painter, const QStyleOptionGraphicsI
                 painter->drawRect(sb3);
             }
 
-            transform.setToIdentity();
-            transform.scale(delta);
+			curDelta = delta;
         }
     }
 
@@ -164,15 +158,15 @@ void SketchManipulatorTool::paint(QPainter *painter, const QStyleOptionGraphicsI
     if(leftButtonDown)
     {
         painter->setPen(QPen(Qt::black,1));
-        painter->drawText(QPointF(21,21), ManipulationOpTitle[manOp]);
+        painter->drawText(QPointF(21,21) - r.center(), ManipulationOpTitle[manOp]);
         painter->setPen(QPen(Qt::white,1));
-        painter->drawText(QPointF(20,20), ManipulationOpTitle[manOp]);
+		painter->drawText(QPointF(20, 20) - r.center(), ManipulationOpTitle[manOp]);
     }
 }
 
 void SketchManipulatorTool::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 {
-    mouseMoveCursorPos = event->pos();
+	mouseMoveCursorPos = event->scenePos();
 
     if ((event->buttons() & Qt::LeftButton))
     {
@@ -184,27 +178,59 @@ void SketchManipulatorTool::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 
     if(manOp == TRANSLATE) QGraphicsObject::mouseMoveEvent(event);
 
-    if(leftButtonDown)
-    {
-        emit(transformChange(transform));
-    }
+	if (leftButtonDown)
+	{
+		auto p0 = view->screenToWorld(buttonDownCursorPos);
+		auto p1 = view->screenToWorld(mouseMoveCursorPos);
+
+		transform.setToIdentity();
+
+		if (manOp == TRANSLATE)
+		{
+			transform.translate(p1 - p0);
+		}
+
+		if (manOp == ROTATE)
+		{
+			transform.rotate(curDelta, toQVector3D(view->sketchPlane->normal()));
+		}
+
+		QVector3D s(1, 1, 1);
+
+		if (manOp == SCALE_X)
+		{
+			transform.scale(s + (p0 - p1));
+		}
+
+		if (manOp == SCALE_Y)
+		{
+			transform.scale(s + (p0 - p1));
+		}
+
+		if (manOp == SCALE_XY)
+		{
+			transform.scale(s * curDelta * 0.05);
+		}
+
+		emit(transformChange(transform));
+	}
+
+	scene()->update(sceneBoundingRect());
 }
 
 void SketchManipulatorTool::mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
-    transform.setToIdentity();
-
 	if (model != nullptr) model->storeActiveNodeGeometry();
-
-    // Record mouse states
-    buttonDownCursorPos = mouseMoveCursorPos = event->pos();
-    startPos = this->pos();
 
     if (event->buttons() & Qt::LeftButton) leftButtonDown = true;
     if (event->buttons() & Qt::RightButton) rightButtonDown = true;
     if (event->buttons() & Qt::MiddleButton) middleButtonDown = true;
 
     manOp = ManipulationOp::TRANSLATE;
+
+	// Record mouse states
+	buttonDownCursorPos = event->scenePos();
+	mouseMoveCursorPos = event->scenePos();
 
     auto r = boundingRect();
     auto w = r.height() * 0.5;
@@ -240,7 +266,7 @@ void SketchManipulatorTool::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
 	if (manOp == TRANSLATE) QGraphicsObject::mousePressEvent(event);
 
-    scene()->update();
+	scene()->update(sceneBoundingRect());
 }
 
 void SketchManipulatorTool::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
@@ -255,7 +281,7 @@ void SketchManipulatorTool::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
     leftButtonDown = false;
     rightButtonDown = false;
 
-    scene()->update();
+	scene()->update(sceneBoundingRect());
 }
 
 void SketchManipulatorTool::setRect(const QRectF & newRect)

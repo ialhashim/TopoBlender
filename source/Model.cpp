@@ -7,6 +7,7 @@ using namespace opengp;
 #include "ModelMesher.h"
 
 Q_DECLARE_METATYPE(Array1D_Vector3);
+Q_DECLARE_METATYPE(Vector3);
 
 Model::Model(QObject *parent) : QObject(parent), Structure::ShapeGraph(""), activeNode(nullptr)
 {
@@ -281,6 +282,7 @@ void Model::storeActiveNodeGeometry()
 	// Store initial node and mesh geometries
 	auto n = activeNode;
 	n->property["restNodeGeometry"].setValue(n->controlPoints());
+	n->property["restNodeCentroid"].setValue(n->center());
 	auto mesh = getMesh(n->id);
 	Array1D_Vector3 meshPoints;
 	for (auto v : mesh->vertices()) meshPoints.push_back(mesh->vertex_coordinates()[v]);
@@ -292,12 +294,19 @@ void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
 	if (activeNode == nullptr) return;
 	if (!activeNode->property.contains("restNodeGeometry")) return;
 
-	// Rest then apply transformation
+	// Apply transformation on rest geometry
 	auto n = activeNode;
 	n->setControlPoints(n->property["restNodeGeometry"].value<Array1D_Vector3>());
 	auto mesh = getMesh(n->id);
 	auto meshPoints = n->property["restMeshGeometry"].value<Array1D_Vector3>();
-	for (auto v : mesh->vertices()) mesh->vertex_coordinates()[v] = meshPoints[v.idx()];
+	auto n_centroid = n->property["restNodeCentroid"].value<Vector3>();
+	for (auto v : mesh->vertices()){
+		Vector3 p = meshPoints[v.idx()] - n_centroid;
+		p = starlab::QVector3(transform * starlab::QVector3(p));
+		mesh->vertex_coordinates()[v] = p + n_centroid;
+	}
 
-	this->transform(transform);
+	mesh->update_face_normals();
+	mesh->update_vertex_normals();
+	mesh->updateBoundingBox();
 }

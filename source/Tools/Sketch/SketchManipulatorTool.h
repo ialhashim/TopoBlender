@@ -3,6 +3,7 @@
 #include <QMatrix4x4>
 
 class Model;
+class SketchView;
 
 class SketchManipulatorTool : public QGraphicsObject
 {
@@ -19,8 +20,10 @@ public:
     enum ManipulationOp{TRANSLATE, ROTATE, SCALE_X, SCALE_Y, SCALE_XY} manOp;
 
     QMatrix4x4 transform;
+	double curDelta;
 
 	Model * model;
+	SketchView * view;
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);
@@ -29,7 +32,6 @@ protected:
 
     QPointF buttonDownCursorPos, mouseMoveCursorPos, buttonUpCursorPos;
     bool leftButtonDown, rightButtonDown, middleButtonDown;
-    QPointF startPos;
 
     QStringList messages;
 
