@@ -3,6 +3,8 @@
 #include "SketchView.h"
 
 namespace Ui{ class SketchToolsWidget; }
+class QGraphicsProxyWidget;
+class SketchDuplicate;
 
 class Sketch : public Tool
 {
@@ -17,6 +19,8 @@ public:
     Document * document;
 
     Ui::SketchToolsWidget * toolsWidget;
+    SketchDuplicate * dupToolWidget;
+    QGraphicsProxyWidget * dupToolWidgetProxy;
 public slots:
     void resizeViews();
 };

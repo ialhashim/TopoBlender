@@ -15,7 +15,8 @@ public:
     // IO:
     bool loadModel(QString filename);
     void createModel(QString modelName);
-	void saveModel(QString modelName);
+    void saveModel(QString modelName, QString filename = "");
+    void clearModels();
 
     // Visualization:
     void drawModel(QString modelName, QWidget * widget);
@@ -24,9 +25,14 @@ public:
     void createCurveFromPoints(QString modelName, QVector<QVector3D> &points);
     void createSheetFromPoints(QString modelName, QVector<QVector3D> &points);
 
+    void duplicateActiveNodeViz(QString modelName, QString duplicationOp);
+    void duplicateActiveNode(QString modelName, QString duplicationOp);
+
     // Modify models:
-    void modifyLastAdded(QString modelName, QVector<QVector3D> &guidePoints);
+    void modifyActiveNode(QString modelName, QVector<QVector3D> &guidePoints);
     void generateSurface(QString modelName, double offset);
+    void placeOnGround(QString modelName);
+    void selectPart(QString modelName, QVector3D rayOrigin, QVector3D rayDirection);
 
     // Stats:
     QString firstModelName();

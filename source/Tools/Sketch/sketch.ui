@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>134</width>
-    <height>365</height>
+    <width>137</width>
+    <height>473</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -35,6 +35,7 @@ QCheckBox {
 
 QPushButton:hover{ background:rgb(255,153,0); border-color:rgb(255,153,0); }
 QPushButton:pressed{ background:rgb(255,153,0); border-color:#FFB444; top:2px; }
+QPushButton:checked{ background:rgb(255,153,0); border-color:#FFFFFF; top:2px; }
 
 QGroupBox{ color:white; }</string>
   </property>
@@ -104,24 +105,51 @@ QGroupBox{ color:white; }</string>
       <bool>true</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
+      <item row="6" column="0">
+       <widget class="QPushButton" name="placeGroundButton">
+        <property name="text">
+         <string>Place on ground</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QPushButton" name="replicateButton">
+        <property name="text">
+         <string>Replicate...</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="0">
+       <widget class="QPushButton" name="deformButton">
+        <property name="text">
+         <string>Deform</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
        <widget class="QPushButton" name="transformButton">
         <property name="text">
          <string>Transform</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QPushButton" name="replicateButton">
+      <item row="0" column="0">
+       <widget class="QPushButton" name="selectButton">
         <property name="text">
-         <string>Replicate</string>
+         <string>Select</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="deformButton">
+      <item row="5" column="0">
+       <widget class="QPushButton" name="edgesButton">
         <property name="text">
-         <string>Deform</string>
+         <string>Find edges</string>
         </property>
        </widget>
       </item>
@@ -129,25 +157,25 @@ QGroupBox{ color:white; }</string>
     </widget>
    </item>
    <item row="2" column="0">
-    <widget class="QGroupBox" name="surfaceBox">
+    <widget class="QGroupBox" name="ioBox">
      <property name="title">
-      <string>Surface</string>
+      <string>IO</string>
      </property>
      <property name="flat">
       <bool>true</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_5">
       <item row="0" column="0">
-       <widget class="QPushButton" name="surfaceButton">
+       <widget class="QPushButton" name="saveButton">
         <property name="text">
-         <string>Generate</string>
+         <string>Save...</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
-       <widget class="QPushButton" name="saveButton">
+       <widget class="QPushButton" name="loadButton">
         <property name="text">
-         <string>Save...</string>
+         <string>Load...</string>
         </property>
        </widget>
       </item>

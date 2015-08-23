@@ -60,9 +60,6 @@ void ModelMesher::generateOffsetSurface(double offset)
 
     if(sheet)
     {
-		// Lower resolution for sheets
-		dx *= 2.0;
-
         // Build surface geometry if needed
         auto & surface = sheet->surface;
         if(surface.quads.empty()){
@@ -122,14 +119,12 @@ void ModelMesher::generateOffsetSurface(double offset)
 
     QSharedPointer<SurfaceMeshModel> newMesh = QSharedPointer<SurfaceMeshModel>(new SurfaceMeshModel());
 
-    Vector3 halfUnite = 0.5 * Vector3(dx,dx,dx);
-
     int vi = 0;
     for(auto tri : mesh){
         std::vector<SurfaceMeshModel::Vertex> verts;
         for(auto p : tri){
             Vector3 voxel(p.x, p.y, p.z);
-            Vector3 pos = (voxel * dx) + Vector3(min_box[0],min_box[1],min_box[2]) + halfUnite;
+            Vector3 pos = (voxel * dx) + Vector3(min_box[0],min_box[1],min_box[2]);
             newMesh->add_vertex(pos);
             verts.push_back(SurfaceMeshModel::Vertex(vi++));
         }
@@ -160,7 +155,7 @@ void ModelMesher::generateRegularSurface(double offset)
     if(curve)
     {
         int numSegments = 20;
-		int radialSegments = 20;
+        int radialSegments = 12;
 
 		std::vector< std::vector<Vector3> > grid;
 

@@ -61,6 +61,216 @@ void Model::createSheetFromPoints(QVector<QVector3D> &points)
     generateSurface();
 }
 
+QVector<Structure::Node *> Model::makeDuplicates(Structure::Node *n, QString duplicationOp)
+{
+    QVector<Structure::Node *> result;
+
+    QStringList params = duplicationOp.split(",", QString::SkipEmptyParts);
+    if(params.empty() || n == nullptr) return result;
+
+    QString op = params.takeFirst();
+
+    // Translational symmetry
+    if(op == "dupT")
+    {
+        int count = params[0].toInt();
+
+        double x = params[1].toDouble();
+        double y = params[2].toDouble();
+        double z = params[3].toDouble();
+
+        Vector3 d = Vector3(x,y,z) / count;
+
+        for(int i = 1; i < count; i++)
+        {
+            auto cloneNode = n->clone();
+
+            auto delta = Vector3(d) * i;
+
+            // Apply duplication operation
+            {
+                // Apply translation to node geometry
+                auto nodeGeometry = cloneNode->controlPoints();
+                for(auto & p : nodeGeometry) p += delta;
+                cloneNode->setControlPoints(nodeGeometry);
+
+                // Clone mesh and apply translation
+                auto mesh = getMesh(n->id);
+                auto cloneMesh = mesh->clone();
+                for(auto v : cloneMesh->vertices()) cloneMesh->vertex_coordinates()[v] += delta;
+                cloneMesh->update_face_normals();
+                cloneMesh->update_vertex_normals();
+
+                cloneNode->id = n->id + QString::number(i);
+                cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+                cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
+            }
+
+            result.push_back(cloneNode);
+        }
+    }
+
+    // Reflectional symmetry
+    if(op == "dupRef")
+    {
+        auto x = params[0].toInt();
+        auto y = params[1].toInt();
+        auto z = params[2].toInt();
+        double offset = params[3].toDouble();
+        Vector3 planeNormal(x?1:0, y?1:0, z?1:0);
+
+        auto cloneNode = n->clone();
+
+        // Apply duplication operation
+        {
+            auto reflectPoint = [&](Vector3 V, Vector3 N, double offset){
+                return (-2*(V).dot(N)*N + V) + offset * N;
+            };
+
+            // Apply reflection to node
+            auto nodeGeometry = cloneNode->controlPoints();
+            for(auto & p : nodeGeometry) p = reflectPoint(p, planeNormal, offset);
+            cloneNode->setControlPoints(nodeGeometry);
+
+            // Clone a reflected mesh
+            auto mesh = getMesh(n->id);
+            auto cloneMesh = new SurfaceMeshModel(cloneNode->id + ".obj", cloneNode->id);
+            for(auto v : mesh->vertices()){
+                cloneMesh->add_vertex(reflectPoint(mesh->vertex_coordinates()[v], planeNormal, offset));
+            }
+            for(auto f : mesh->faces()){
+                std::vector<SurfaceMeshModel::Vertex> verts;
+                for(auto v : mesh->vertices(f)) verts.push_back(v);
+                std::reverse(verts.begin(), verts.end());
+                cloneMesh->add_face(verts);
+            }
+
+            cloneMesh->update_face_normals();
+            cloneMesh->update_vertex_normals();
+
+            cloneNode->id = n->id + QString::number(2);
+            cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+            cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
+        }
+
+        result.push_back(cloneNode);
+    }
+
+    // Rotational symmetry
+    if(op == "dupRot")
+    {
+        int count = params[0].toInt();
+
+        int x = params[1].toInt();
+        int y = params[2].toInt();
+        int z = params[3].toInt();
+        //double offset = params[4].toDouble();
+        Vector3 axis(x?1:0, y?1:0, z?1:0);
+
+        for(int i = 1; i < count; i++)
+        {
+            auto cloneNode = n->clone();
+
+            double theta = ((2.0 * M_PI) / count) * i;
+
+            // Apply duplication operation
+            {
+                auto rotatePoint = [&](double theta, Vector3 v, Vector3 axis){
+                    //if(theta == 0) return v;
+                    //return (v * cos(theta) + axis.cross(v) * sin(theta) + axis * axis.dot(v) * (1 - cos(theta)));
+                    Eigen::AngleAxisd q(theta, axis);
+                    return q * v;
+                };
+
+                // Apply rotation to node geometry
+                auto nodeGeometry = cloneNode->controlPoints();
+                for(auto & p : nodeGeometry)
+                {
+                    p = rotatePoint(theta, p, axis);
+                }
+                cloneNode->setControlPoints(nodeGeometry);
+
+                // Clone mesh and apply translation
+                auto mesh = getMesh(n->id);
+                auto cloneMesh = mesh->clone();
+                for(auto v : cloneMesh->vertices())
+                {
+                    auto & p = cloneMesh->vertex_coordinates()[v];
+                    p = rotatePoint(theta, p, axis);
+                }
+                cloneMesh->update_face_normals();
+                cloneMesh->update_vertex_normals();
+
+                cloneNode->id = n->id + QString::number(i);
+                cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+                cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
+            }
+
+            result.push_back(cloneNode);
+        }
+    }
+
+    return result;
+}
+
+void Model::duplicateActiveNodeViz(QString duplicationOp)
+{
+    if(activeNode == nullptr) return;
+
+    tempNodes.clear();
+
+    auto dups = makeDuplicates(activeNode, duplicationOp);
+
+    for(auto n : dups)
+    {
+        // Distinguish new nodes
+        auto color = n->vis_property["color"].value<QColor>();
+        color = color.lighter(50);
+        n->vis_property["color"].setValue(color);
+
+        tempNodes.push_back(QSharedPointer<Structure::Node>(n));
+    }
+
+    for(auto g : groupsOf(activeNode->id)){
+        for(auto nid : g){
+            if(nid == activeNode->id) continue;
+            getNode(nid)->vis_property["isHidden"].setValue(true);
+        }
+    }
+}
+
+void Model::duplicateActiveNode(QString duplicationOp)
+{
+    if(activeNode == nullptr) return;
+
+    // Remove visualizations
+    tempNodes.clear();
+
+    // Remove any previous groups
+    for(auto g : groupsOf(activeNode->id)){
+        for(auto nid : g){
+            if(nid == activeNode->id) continue;
+            removeNode(nid);
+        }
+    }
+
+    // Create duplicate nodes
+    auto dups = makeDuplicates(activeNode, duplicationOp);
+
+    // Add nodes to graph and to a new group
+    QVector<QString> nodesInGroup;
+    nodesInGroup << activeNode->id;
+    int c = 2;
+    for(auto n : dups)
+    {
+        n->id = activeNode->id + QString::number(c++);
+        addNode(n);
+
+        nodesInGroup << n->id;
+    }
+    addGroup(nodesInGroup);
+}
+
 void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
 {
 	if (guidePoints.size() < 2 || activeNode == nullptr) return;
@@ -126,6 +336,55 @@ void Model::generateSurface(double offset)
 
     //mesher.generateOffsetSurface(offset);
     mesher.generateRegularSurface(offset);
+}
+
+void Model::placeOnGround()
+{
+    this->normalize();
+    this->moveBottomCenterToOrigin();
+}
+
+void Model::selectPart(QVector3D orig, QVector3D dir)
+{
+    QMap< double, QPair<int, Vector3> > isects;
+    QMap< double, QString > isectNode;
+
+    Vector3 origin (orig[0], orig[1], orig[2]);
+    Vector3 direction (dir[0], dir[1], dir[2]);
+    Vector3 ipoint;
+
+    for(auto n : nodes)
+    {
+        auto nodeMesh = getMesh(n->id);
+        if(!nodeMesh) continue;
+
+        nodeMesh->updateBoundingBox();
+
+        for(auto f : nodeMesh->faces())
+        {
+            std::vector<Vector3> tri;
+            for(auto v : nodeMesh->vertices(f))
+                tri.push_back( nodeMesh->vertex_coordinates()[v] );
+
+            if( GeometryHelper::intersectRayTri(tri, origin, direction, ipoint) )
+            {
+                double dist = (origin - ipoint).norm();
+                isects[dist] = qMakePair(f.idx(), ipoint);
+                isectNode[dist] = n->id;
+            }
+        }
+    }
+
+    // Only consider closest hit
+    if(isects.size())
+    {
+        double minDist = isects.keys().front();
+        activeNode = getNode(isectNode[minDist]);
+    }
+    else
+    {
+        activeNode = nullptr;
+    }
 }
 
 void Model::draw(Viewer *glwidget)
@@ -220,11 +479,16 @@ void Model::draw(Viewer *glwidget)
     program.setUniformValue(viewPosLocation, glwidget->eyePos);
     program.setUniformValue(lightColorLocation, QVector3D(1,1,1));
 
+    // Add visualized nodes for duplication and such
+    auto allNodes = nodes;
+    for(auto n : tempNodes) allNodes.push_back(n.data());
+
     // Draw parts as meshes
-    for(auto n : nodes)
+    for(auto n : allNodes)
     {
-        auto mesh = getMesh(n->id);
+        auto mesh = n->property["mesh"].value< QSharedPointer<SurfaceMeshModel> >().data();
         if(mesh == nullptr || mesh->n_faces() < 1) continue;
+        if(n->vis_property["isHidden"].toBool()) continue;
 
         auto nodeColor = n->vis_property["color"].value<QColor>();
         auto ncolor = Eigen::Vector3f(nodeColor.redF(), nodeColor.greenF(), nodeColor.blueF());
@@ -271,22 +535,92 @@ void Model::draw(Viewer *glwidget)
 
     program.release();
 
+    // Draw bounding box around active part
+    if(activeNode != nullptr && getMesh(activeNode->id) != nullptr)
+    {
+        auto mesh = getMesh(activeNode->id);
+        auto box = mesh->bbox();
+
+        QVector<Eigen::Vector3d> corners;
+        corners<<box.corner(Eigen::AlignedBox3d::BottomLeftFloor);
+        corners<<box.corner(Eigen::AlignedBox3d::BottomRightFloor);
+        corners<<box.corner(Eigen::AlignedBox3d::TopLeftFloor);
+        corners<<box.corner(Eigen::AlignedBox3d::TopRightFloor);
+        corners<<box.corner(Eigen::AlignedBox3d::BottomLeftCeil);
+        corners<<box.corner(Eigen::AlignedBox3d::BottomRightCeil);
+        corners<<box.corner(Eigen::AlignedBox3d::TopLeftCeil);
+        corners<<box.corner(Eigen::AlignedBox3d::TopRightCeil);
+
+        QVector<QVector3D> lines;
+        auto addLine = [&](Eigen::Vector3d a, Eigen::Vector3d b){
+            Vector3 dir = (a - b) * 0.1;
+            lines << toQVector3D(a);
+            lines << toQVector3D(a - dir);
+            lines << toQVector3D(b);
+            lines << toQVector3D(b + dir);
+        };
+
+        addLine(corners[0], corners[1]);
+        addLine(corners[0], corners[2]);
+        addLine(corners[0], corners[4]);
+        addLine(corners[1], corners[3]);
+        addLine(corners[1], corners[5]);
+        addLine(corners[2], corners[3]);
+        addLine(corners[2], corners[6]);
+        addLine(corners[3], corners[7]);
+        addLine(corners[4], corners[5]);
+        addLine(corners[4], corners[6]);
+        addLine(corners[5], corners[7]);
+        addLine(corners[6], corners[7]);
+
+        QColor color(255,255,255,100);
+
+        glwidget->drawLines(lines, color, glwidget->pvm, "lines");
+    }
+
     glwidget->glDisable(GL_DEPTH_TEST);
     //glwidget->glDisable(GL_CULL_FACE);
+
+    if(true)
+    {
+        QVector<QVector3D> lines;
+
+        for(auto e : edges)
+        {
+            lines << toQVector3D(e->position(e->n1->id));
+            lines << toQVector3D(e->position(e->n2->id));
+        }
+
+        glwidget->glLineWidth(4);
+        QColor color(255,0,255,100);
+        glwidget->drawLines(lines, color, glwidget->pvm, "lines");
+    }
 }
 
 void Model::storeActiveNodeGeometry()
 {
 	if (activeNode == nullptr) return;
 
-	// Store initial node and mesh geometries
-	auto n = activeNode;
-	n->property["restNodeGeometry"].setValue(n->controlPoints());
-	n->property["restNodeCentroid"].setValue(n->center());
-	auto mesh = getMesh(n->id);
-	Array1D_Vector3 meshPoints;
-	for (auto v : mesh->vertices()) meshPoints.push_back(mesh->vertex_coordinates()[v]);
-	n->property["restMeshGeometry"].setValue(meshPoints);
+    QSet<Structure::Node*> nodes;
+    nodes << activeNode;
+
+    // Apply to group if in any
+    for(auto g : groupsOf(activeNode->id)){
+        for(auto nid : g){
+            nodes << getNode(nid);
+        }
+    }
+
+    for(auto n : nodes)
+    {
+        // Store initial node and mesh geometries
+        n->property["restNodeGeometry"].setValue(n->controlPoints());
+        n->property["restNodeCentroid"].setValue(n->center());
+        auto mesh = getMesh(n->id);
+        Array1D_Vector3 meshPoints;
+        for (auto v : mesh->vertices()) meshPoints.push_back(mesh->vertex_coordinates()[v]);
+        n->property["restMeshGeometry"].setValue(meshPoints);
+    }
 }
 
 void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
@@ -294,19 +628,39 @@ void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
 	if (activeNode == nullptr) return;
 	if (!activeNode->property.contains("restNodeGeometry")) return;
 
-	// Apply transformation on rest geometry
-	auto n = activeNode;
-	n->setControlPoints(n->property["restNodeGeometry"].value<Array1D_Vector3>());
-	auto mesh = getMesh(n->id);
-	auto meshPoints = n->property["restMeshGeometry"].value<Array1D_Vector3>();
-	auto n_centroid = n->property["restNodeCentroid"].value<Vector3>();
-	for (auto v : mesh->vertices()){
-		Vector3 p = meshPoints[v.idx()] - n_centroid;
-		p = starlab::QVector3(transform * starlab::QVector3(p));
-		mesh->vertex_coordinates()[v] = p + n_centroid;
-	}
+    QSet<Structure::Node*> nodes;
+    nodes << activeNode;
 
-	mesh->update_face_normals();
-	mesh->update_vertex_normals();
-	mesh->updateBoundingBox();
+    // Apply to group if in any
+    for(auto g : groupsOf(activeNode->id)){
+        for(auto nid : g){
+            nodes << getNode(nid);
+        }
+    }
+
+    for(auto n : nodes)
+    {
+        auto n_centroid = n->property["restNodeCentroid"].value<Vector3>();
+
+        // Apply transformation on rest geometry
+        auto nodeGeometry = n->property["restNodeGeometry"].value<Array1D_Vector3>();
+        for(auto & p : nodeGeometry)
+        {
+            Vector3 q = starlab::QVector3(transform * starlab::QVector3((p - n_centroid)));
+            p = q + n_centroid;
+        }
+        n->setControlPoints(nodeGeometry);
+
+        auto mesh = getMesh(n->id);
+        auto meshPoints = n->property["restMeshGeometry"].value<Array1D_Vector3>();
+        for (auto v : mesh->vertices()){
+            Vector3 p = meshPoints[v.idx()] - n_centroid;
+            p = starlab::QVector3(transform * starlab::QVector3(p));
+            mesh->vertex_coordinates()[v] = p + n_centroid;
+        }
+
+        mesh->update_face_normals();
+        mesh->update_vertex_normals();
+        mesh->updateBoundingBox();
+    }
 }

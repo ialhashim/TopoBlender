@@ -18,7 +18,9 @@ SOURCES +=  main.cpp\
 # Sketch tool
             Tools/Sketch/Sketch.cpp \
             Tools/Sketch/SketchView.cpp \
-            Tools/Sketch/SketchManipulatorTool.cpp
+            Tools/Sketch/SketchManipulatorTool.cpp \
+    Tools/Sketch/SketchDuplicate.cpp \
+    ModelConnector.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -34,12 +36,15 @@ HEADERS  += mainwindow.h \
 # Sketch tool
             Tools/Sketch/Sketch.h \
             Tools/Sketch/SketchView.h \
-            Tools/Sketch/SketchManipulatorTool.h
+            Tools/Sketch/SketchManipulatorTool.h \
+    Tools/Sketch/SketchDuplicate.h \
+    ModelConnector.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \
             ModifiersPanel.ui \
-            Tools/Sketch/Sketch.ui
+            Tools/Sketch/Sketch.ui \
+    Tools/Sketch/SketchDuplicate.ui
 
 win32{
     # Eigen 3.2.5 introduced some new warnings

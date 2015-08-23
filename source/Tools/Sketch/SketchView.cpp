@@ -66,10 +66,7 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
 	// Manipulator tool
 	manTool = new SketchManipulatorTool(this);
 	manTool->setVisible(false);
-	manTool->view = this;
-	manTool->model = document->getModel(document->firstModelName());
-
-	manTool->model->connect(manTool, SIGNAL(transformChange(QMatrix4x4)), SLOT(transformActiveNodeGeometry(QMatrix4x4)));
+    manTool->view = this;
 }
 
 SketchView::~SketchView()
@@ -242,6 +239,7 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
     }
 
 	// Messages
+    if(false)
     {
         int x = 15, y = 45;
         for (auto message : messages){
@@ -263,19 +261,6 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
         painter->setPen(borderPen);
         painter->drawRect(this->boundingRect().adjusted(hbw, hbw, -hbw, -hbw));
     }
-
-	// Update manipulator tool
-	/*if (manTool->isVisible() && !this->isUnderMouse())
-	{
-		auto model = document->getModel(document->firstModelName());
-		if (model != nullptr) {
-			auto n = model->lastAddedNode;
-			if (n != nullptr){
-				auto screenPos = worldToScreen(toQVector3D(n->center()));
-				manTool->setPos(screenPos.toPointF() - manTool->boundingRect().center());
-			}
-		}
-	}*/
 }
 
 QMatrix4x4 SketchView::defaultOrthoViewMatrix(QVector3D & eye, int type, int w, int h,
@@ -345,7 +330,8 @@ void SketchView::setSketchOp(SketchViewOp toSketchOp)
 		if (model != nullptr) {
 			auto n = model->activeNode;
 			if (n != nullptr) {
-				// Place manipulator at center of part
+                // Place manipulator at center of part
+                manTool->model = model;
 				auto screenPos = worldToScreen(toQVector3D(n->center()));
 				manTool->setPos(screenPos.toPointF() - manTool->boundingRect().center());
 				manTool->setVisible(true);
@@ -354,6 +340,7 @@ void SketchView::setSketchOp(SketchViewOp toSketchOp)
 	}
 	else
 	{
+        manTool->model = nullptr;
 		manTool->setVisible(false);
 	}
 }
@@ -491,6 +478,15 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 		{
 
 		}
+
+        if(sketchOp == SELECT_PART)
+        {
+            auto proj = sketchPlane->projection(toVector3(screenToWorld(event->pos())));
+
+            QVector3D rayOrigin = toQVector3D(proj + sketchPlane->normal() * 100);
+            QVector3D rayDirection = toQVector3D(sketchPlane->normal());
+            document->selectPart(document->firstModelName(), rayOrigin, rayDirection);
+        }
     }
 
 	scene()->update(sceneBoundingRect());
@@ -522,7 +518,7 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
             auto guidePoints = sketchPoints;
             guidePoints.push_front(toQVector3D(sketchPlane->normal()));
 
-            document->modifyLastAdded(document->firstModelName(), guidePoints);
+            document->modifyActiveNode(document->firstModelName(), guidePoints);
         }
     }
 

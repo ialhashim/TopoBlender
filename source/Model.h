@@ -17,12 +17,24 @@ public:
     void createCurveFromPoints(QVector<QVector3D> &points);
     void createSheetFromPoints(QVector<QVector3D> &points);
 
+    void duplicateActiveNodeViz(QString duplicationOp);
+    void duplicateActiveNode(QString duplicationOp);
+
     void modifyLastAdded(QVector<QVector3D> &guidePoints);
 
     void generateSurface(double offset = 0.025);
 
+    void placeOnGround();
+
+    void selectPart(QVector3D rayOrigin, QVector3D rayDirection);
+
     Structure::Node * activeNode;
 	void storeActiveNodeGeometry();
+
+    QVector< QSharedPointer<Structure::Node> > tempNodes;
+
+protected:
+    QVector< Structure::Node* > makeDuplicates(Structure::Node* n, QString duplicationOp);
 
 public slots :
 	void transformActiveNodeGeometry(QMatrix4x4 transform);

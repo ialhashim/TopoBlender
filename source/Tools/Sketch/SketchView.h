@@ -13,8 +13,10 @@ namespace Eigen{ class Camera; class Trackball; class Plane; }
 enum SketchViewType{ VIEW_TOP, VIEW_FRONT, VIEW_LEFT, VIEW_CAMERA };
 static QString SketchViewTypeNames[] = {"Top", "Front", "Left", "Camera"};
 
-enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET, DEFORM_SKETCH, TRANSFORM_PART };
-static QString SketchViewOpName[] = {"Ready", "Sketch Curve", "Sketch Sheet", "Deform", "Transform Part"};
+enum SketchViewOp{ SKETCH_NONE, SKETCH_CURVE, SKETCH_SHEET,
+                   DEFORM_SKETCH, TRANSFORM_PART, SELECT_PART };
+static QString SketchViewOpName[] = {"Ready", "Sketch Curve",
+                                     "Sketch Sheet", "Deform", "Transform Part", "Select Part"};
 
 class SketchView : public QGraphicsObject
 {

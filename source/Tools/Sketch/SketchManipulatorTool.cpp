@@ -10,7 +10,8 @@
 
 static QString ManipulationOpTitle[] = {"Move", "Rotate", "Scale X", "Scale Y", "Scale"};
 
-SketchManipulatorTool::SketchManipulatorTool(QGraphicsItem *parent) : QGraphicsObject(parent), rect(QRect(0, 0, 200, 200)), manOp(TRANSLATE), leftButtonDown(false)
+SketchManipulatorTool::SketchManipulatorTool(QGraphicsItem *parent) : QGraphicsObject(parent),
+    rect(QRect(0, 0, 200, 200)), manOp(TRANSLATE), leftButtonDown(false), model(nullptr)
 {
     this->setAcceptHoverEvents(true);
     this->setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
@@ -155,7 +156,7 @@ void SketchManipulatorTool::paint(QPainter *painter, const QStyleOptionGraphicsI
     }
 
     // DEBUG:
-    if(leftButtonDown)
+    if(false && leftButtonDown)
     {
         painter->setPen(QPen(Qt::black,1));
         painter->drawText(QPointF(21,21) - r.center(), ManipulationOpTitle[manOp]);
@@ -209,10 +210,11 @@ void SketchManipulatorTool::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 
 		if (manOp == SCALE_XY)
 		{
-			transform.scale(s * curDelta * 0.05);
+            transform.scale(s * curDelta * 0.05f);
 		}
 
-		emit(transformChange(transform));
+        emit(transformChange(transform));
+        if(model != nullptr) model->transformActiveNodeGeometry(transform);
 	}
 
 	scene()->update(sceneBoundingRect());

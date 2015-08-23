@@ -226,4 +226,26 @@ inline void meregeVertices(Mesh * m){
 	for (auto face : faces) m->add_face(face);
 }
 
+template<class Vector3>
+inline static bool intersectRayTri(const std::vector<Vector3> & tri, const Vector3 & rayOrigin,
+    const Vector3 & rayDirection, Vector3 & intersectionPoint)
+{
+    double u, v, t;
+    Vector3 edge1 = tri[1] - tri[0];
+    Vector3 edge2 = tri[2] - tri[0];
+    Vector3 pvec = rayDirection.cross(edge2);
+    double det = edge1.dot(pvec);
+    if (det == 0) return false;
+    double invDet = 1 / det;
+    Vector3 tvec = rayOrigin - tri[0];
+    u = tvec.dot(pvec) * invDet;
+    if (u < 0 || u > 1) return false;
+    Vector3 qvec = tvec.cross(edge1);
+    v = rayDirection.dot(qvec) * invDet;
+    if (v < 0 || u + v > 1) return false;
+    t = edge2.dot(qvec) * invDet;
+    intersectionPoint = rayOrigin + (t * rayDirection);
+    return true;
+}
+
 }
