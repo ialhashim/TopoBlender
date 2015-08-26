@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>thumbnail.png</file>
+        <file>TopoBlenderIcon.ico</file>
+    </qresource>
+    <qresource prefix="/icons/ManualBlend">
+        <file>mb_blend.png</file>
+        <file>mb_category.png</file>
+        <file>mb_analyze.png</file>
+    </qresource>
+</RCC>

@@ -159,7 +159,7 @@ public:
         mTarget = target;
         if (!mTarget.isApprox(position()))
         {
-            Vector3f newDirection = mTarget - position();
+			Vector3f newDirection = Vector3f(mTarget) - Vector3f(position());
             setDirection(newDirection.normalized());
         }
     }

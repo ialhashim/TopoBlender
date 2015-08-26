@@ -213,7 +213,7 @@ void Viewer::initializeGL()
             "    vec3 specular = specularStrength * spec * lightColor;   \n"
             "    \n"
             "    vec3 result = (ambient + diffuse + specular) * Color.xyz; \n"
-            "    color = vec4(result, 1.0f); \n"
+            "    color = vec4(result, Color.w); \n"
             "}");
         program->link();
 
@@ -578,5 +578,3 @@ void Viewer::drawTriangles(QColor useColor, const QVector<QVector3D> &points,
 
     glDisable(GL_DEPTH_TEST);
 }
-
-

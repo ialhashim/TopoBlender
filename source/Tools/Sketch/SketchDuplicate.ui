@@ -318,6 +318,13 @@ QGroupBox{ color:white; }</string>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
+      <widget class="QCheckBox" name="groupingOption">
+       <property name="text">
+        <string>No grouping</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>

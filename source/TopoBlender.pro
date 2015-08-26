@@ -13,14 +13,20 @@ SOURCES +=  main.cpp\
             Tool.cpp \
             Viewer.cpp \
             Document.cpp \
+            DocumentAnalyzeWorker.cpp \
             Model.cpp \
             ModelMesher.cpp \
+            ModelConnector.cpp \
+            Thumbnail.cpp \
+            Gallery.cpp \
 # Sketch tool
             Tools/Sketch/Sketch.cpp \
             Tools/Sketch/SketchView.cpp \
             Tools/Sketch/SketchManipulatorTool.cpp \
-    Tools/Sketch/SketchDuplicate.cpp \
-    ModelConnector.cpp
+            Tools/Sketch/SketchDuplicate.cpp \
+# Manual blend tool
+            Tools/ManualBlend/ManualBlend.cpp \
+            Tools/ManualBlend/ManualBlendView.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -31,20 +37,29 @@ HEADERS  += mainwindow.h \
             Viewer.h \
             Camera.h \
             Document.h \
+            DocumentAnalyzeWorker.h \
             Model.h \
             ModelMesher.h \
+            ModelConnector.h \
+            Thumbnail.h \
+            Gallery.h \
 # Sketch tool
             Tools/Sketch/Sketch.h \
             Tools/Sketch/SketchView.h \
             Tools/Sketch/SketchManipulatorTool.h \
-    Tools/Sketch/SketchDuplicate.h \
-    ModelConnector.h
+            Tools/Sketch/SketchDuplicate.h \
+# Manual blend tool
+            Tools/ManualBlend/ManualBlend.h \
+            Tools/ManualBlend/ManualBlendView.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \
             ModifiersPanel.ui \
+# Sketch tool
             Tools/Sketch/Sketch.ui \
-    Tools/Sketch/SketchDuplicate.ui
+            Tools/Sketch/SketchDuplicate.ui \
+# Manual blend tool
+            Tools/ManualBlend/ManualBlend.ui
 
 win32{
     # Eigen 3.2.5 introduced some new warnings
@@ -54,6 +69,8 @@ win32{
     # No longer implicit since the ANGLE driver is now an alternative
     LIBS += -lopengl32 -lglu32
 }
+
+linux-g++{ LIBS += -lGLU }
 
 # C++11 support on linux
 linux-g++{ CONFIG += c++11 warn_off }
@@ -88,7 +105,9 @@ INCLUDEPATH += ../../GeoTopo/source/external/SurfaceMesh ../../GeoTopo/source/ex
 LIBS += -L$$PWD/../../GeoTopo/source/NURBS/lib/$$CFG -lNURBS
 INCLUDEPATH += ../../GeoTopo/source/NURBS
 
+### Other libraries
 # SDF library
 INCLUDEPATH += external/SDFGen
 
-linux-g++{ LIBS += -lGLU }
+RESOURCES += media/TopoBlender.qrc
+win32:RC_FILE = media/TopoBlender.rc

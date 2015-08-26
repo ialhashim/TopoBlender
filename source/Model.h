@@ -27,11 +27,14 @@ public:
     void placeOnGround();
 
     void selectPart(QVector3D rayOrigin, QVector3D rayDirection);
+    void deselectAll();
 
     Structure::Node * activeNode;
 	void storeActiveNodeGeometry();
 
     QVector< QSharedPointer<Structure::Node> > tempNodes;
+
+    Structure::ShapeGraph * cloneAsShapeGraph();
 
 protected:
     QVector< Structure::Node* > makeDuplicates(Structure::Node* n, QString duplicationOp);

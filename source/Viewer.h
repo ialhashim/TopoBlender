@@ -14,7 +14,7 @@ public:
 
     QMap<QString, QOpenGLShaderProgram*> shaders;
 
-    // Active camera properites
+    // Active camera properties
     QMatrix4x4 pvm;
     QVector3D eyePos;
 

@@ -37,7 +37,7 @@ void Model::createCurveFromPoints(QVector<QVector3D> & points)
 
 void Model::createSheetFromPoints(QVector<QVector3D> &points)
 {
-	if (points.size() < 2) return;
+    if (points.size() < 2) return;
 
     // Convert corner points to Vector3
     Array1D_Vector3 cp;
@@ -100,9 +100,7 @@ QVector<Structure::Node *> Model::makeDuplicates(Structure::Node *n, QString dup
                 for(auto v : cloneMesh->vertices()) cloneMesh->vertex_coordinates()[v] += delta;
                 cloneMesh->update_face_normals();
                 cloneMesh->update_vertex_normals();
-
-                cloneNode->id = n->id + QString::number(i);
-                cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+                cloneMesh->updateBoundingBox();
                 cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
             }
 
@@ -144,12 +142,9 @@ QVector<Structure::Node *> Model::makeDuplicates(Structure::Node *n, QString dup
                 std::reverse(verts.begin(), verts.end());
                 cloneMesh->add_face(verts);
             }
-
             cloneMesh->update_face_normals();
             cloneMesh->update_vertex_normals();
-
-            cloneNode->id = n->id + QString::number(2);
-            cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+            cloneMesh->updateBoundingBox();
             cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
         }
 
@@ -200,14 +195,21 @@ QVector<Structure::Node *> Model::makeDuplicates(Structure::Node *n, QString dup
                 }
                 cloneMesh->update_face_normals();
                 cloneMesh->update_vertex_normals();
-
-                cloneNode->id = n->id + QString::number(i);
-                cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
+                cloneMesh->updateBoundingBox();
                 cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
             }
 
             result.push_back(cloneNode);
         }
+    }
+
+    char randomAlpha = toupper(97 + rand() % 26);
+
+    for(int i = 0; i < result.size(); i++)
+    {
+        auto cloneNode = result[i];
+        cloneNode->id = n->id + randomAlpha + QString::number(i+2);
+        cloneNode->property["mesh_filename"].setValue(QString("meshes/%1.obj").arg(cloneNode->id));
     }
 
     return result;
@@ -218,6 +220,10 @@ void Model::duplicateActiveNodeViz(QString duplicationOp)
     if(activeNode == nullptr) return;
 
     tempNodes.clear();
+
+    // Check for grouping option
+    QStringList params = duplicationOp.split(",", QString::SkipEmptyParts);
+    if(params.empty()) return;
 
     auto dups = makeDuplicates(activeNode, duplicationOp);
 
@@ -231,10 +237,12 @@ void Model::duplicateActiveNodeViz(QString duplicationOp)
         tempNodes.push_back(QSharedPointer<Structure::Node>(n));
     }
 
+    // Hide previous group during visualization
     for(auto g : groupsOf(activeNode->id)){
         for(auto nid : g){
             if(nid == activeNode->id) continue;
-            getNode(nid)->vis_property["isHidden"].setValue(true);
+
+            getNode(nid)->vis_property["isHidden"].setValue(params.back() == "group");
         }
     }
 }
@@ -246,11 +254,17 @@ void Model::duplicateActiveNode(QString duplicationOp)
     // Remove visualizations
     tempNodes.clear();
 
+    // Check for grouping option
+    QStringList params = duplicationOp.split(",", QString::SkipEmptyParts);
+    if(params.empty()) return;
+
     // Remove any previous groups
-    for(auto g : groupsOf(activeNode->id)){
-        for(auto nid : g){
-            if(nid == activeNode->id) continue;
-            removeNode(nid);
+    if(params.back() == "group"){
+        for(auto g : groupsOf(activeNode->id)){
+            for(auto nid : g){
+                if(nid == activeNode->id) continue;
+                removeNode(nid);
+            }
         }
     }
 
@@ -260,20 +274,20 @@ void Model::duplicateActiveNode(QString duplicationOp)
     // Add nodes to graph and to a new group
     QVector<QString> nodesInGroup;
     nodesInGroup << activeNode->id;
-    int c = 2;
+
     for(auto n : dups)
     {
-        n->id = activeNode->id + QString::number(c++);
         addNode(n);
-
         nodesInGroup << n->id;
     }
-    addGroup(nodesInGroup);
+
+    if(params.back() == "group")
+        addGroup(nodesInGroup);
 }
 
 void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
 {
-	if (guidePoints.size() < 2 || activeNode == nullptr) return;
+    if (guidePoints.size() < 2 || activeNode == nullptr) return;
 
     Structure::Curve* curve = dynamic_cast<Structure::Curve*>(activeNode);
     Structure::Sheet* sheet = dynamic_cast<Structure::Sheet*>(activeNode);
@@ -281,10 +295,10 @@ void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
     auto fp = guidePoints.takeFirst();
     Vector3 axis(fp.x(),fp.y(),fp.z());
 
-	int skipAxis = -1;
-	if (axis.isApprox(-Vector3::UnitX())) skipAxis = 0;
-	if (axis.isApprox(-Vector3::UnitY())) skipAxis = 1;
-	if (axis.isApprox(Vector3::UnitZ())) skipAxis = 2;
+    int skipAxis = -1;
+    if (axis.isApprox(-Vector3::UnitX())) skipAxis = 0;
+    if (axis.isApprox(-Vector3::UnitY())) skipAxis = 1;
+    if (axis.isApprox(Vector3::UnitZ())) skipAxis = 2;
 
     // Smooth curve
     guidePoints = GeometryHelper::smooth(GeometryHelper::uniformResampleCount(guidePoints, 20), 5);
@@ -313,14 +327,14 @@ void Model::modifyLastAdded(QVector<QVector3D> &guidePoints)
         auto oldPoints = sheet->controlPoints();
         auto newPoints = oldPoints;
 
-		Vector3 centroid = sheet->position(Eigen::Vector4d(0.5, 0.5, 0, 0));
-		Vector3 delta = gpoint.front() - centroid;
+        Vector3 centroid = sheet->position(Eigen::Vector4d(0.5, 0.5, 0, 0));
+        Vector3 delta = gpoint.front() - centroid;
 
         for(size_t i = 0; i < oldPoints.size(); i++){
-			for (int j = 0; j < 3; j++){
-				if (j == skipAxis) continue;
-				newPoints[i][j] += delta[j];
-			}
+            for (int j = 0; j < 3; j++){
+                if (j == skipAxis) continue;
+                newPoints[i][j] += delta[j];
+            }
         }
 
         sheet->setControlPoints(newPoints);
@@ -385,6 +399,12 @@ void Model::selectPart(QVector3D orig, QVector3D dir)
     {
         activeNode = nullptr;
     }
+}
+
+void Model::deselectAll()
+{
+    activeNode = nullptr;
+    tempNodes.clear();
 }
 
 void Model::draw(Viewer *glwidget)
@@ -493,7 +513,7 @@ void Model::draw(Viewer *glwidget)
         auto nodeColor = n->vis_property["color"].value<QColor>();
         auto ncolor = Eigen::Vector3f(nodeColor.redF(), nodeColor.greenF(), nodeColor.blueF());
 
-		bool isSmoothShading = n->vis_property["isSmoothShading"].toBool();
+        bool isSmoothShading = n->vis_property["isSmoothShading"].toBool();
 
         // Pack geometry, normals, and colors
         QVector<GLfloat> vertex, normal, color;
@@ -504,17 +524,17 @@ void Model::draw(Viewer *glwidget)
 
         int v_count = 0;
 
-		// Pack mesh faces
+        // Pack mesh faces
         for(auto f : mesh->faces()){
             for(auto vf : mesh->vertices(f)){
                 for(int i = 0; i < 3; i++){
-					// Coordinate
+                    // Coordinate
                     vertex << mesh_points[vf][i];
-					// Color
-					color << ncolor[i];		
-					// Normal
-					if (!isSmoothShading) normal << mesh_fnormals[f][i];
-					else normal << mesh_normals[vf][i];
+                    // Color
+                    color << ncolor[i];
+                    // Normal
+                    if (!isSmoothShading) normal << mesh_fnormals[f][i];
+                    else normal << mesh_normals[vf][i];
                     v_count++;
                 }
             }
@@ -599,7 +619,7 @@ void Model::draw(Viewer *glwidget)
 
 void Model::storeActiveNodeGeometry()
 {
-	if (activeNode == nullptr) return;
+    if (activeNode == nullptr) return;
 
     QSet<Structure::Node*> nodes;
     nodes << activeNode;
@@ -625,8 +645,8 @@ void Model::storeActiveNodeGeometry()
 
 void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
 {
-	if (activeNode == nullptr) return;
-	if (!activeNode->property.contains("restNodeGeometry")) return;
+    if (activeNode == nullptr) return;
+    if (!activeNode->property.contains("restNodeGeometry")) return;
 
     QSet<Structure::Node*> nodes;
     nodes << activeNode;
@@ -663,4 +683,43 @@ void Model::transformActiveNodeGeometry(QMatrix4x4 transform)
         mesh->update_vertex_normals();
         mesh->updateBoundingBox();
     }
+}
+
+Structure::ShapeGraph* Model::cloneAsShapeGraph()
+{
+    auto clone = new Structure::ShapeGraph(name());
+    for(auto n : nodes)
+    {
+        auto cloneNode = clone->addNode(n->clone());
+
+        // clone meshes as well
+        auto mesh = getMesh(n->id);
+        auto cloneMesh = mesh->clone();
+        cloneMesh->update_face_normals();
+        cloneMesh->update_vertex_normals();
+        cloneMesh->updateBoundingBox();
+        cloneNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(cloneMesh));
+    }
+    for(auto e : edges){
+        Structure::Node * n1 = clone->getNode(e->n1->id);
+        Structure::Node * n2 = clone->getNode(e->n2->id);
+        Structure::Link * newEdge = clone->addEdge(n1, n2, e->coord[0], e->coord[1], e->id);
+        newEdge->property = e->property;
+    }
+    clone->groups = groups;
+    clone->property = ((Structure::ShapeGraph*)this)->property;
+    clone->misc = misc;
+    clone->debugPoints = debugPoints;
+    clone->debugPoints2 = debugPoints2;
+    clone->debugPoints3 = debugPoints3;
+    clone->vs = vs; clone->vs2 = vs2; clone->vs3 = vs3;
+    clone->ps = ps; clone->ps2 = ps2; clone->ps3 = ps3;
+    clone->spheres = spheres; clone->spheres2 = spheres2;
+    clone->ueid = ueid;
+    clone->landmarks = landmarks;
+    clone->relations = relations;
+    clone->animation = animation;
+    clone->animation_index = animation_index;
+    clone->animation_debug = animation_debug;
+    return clone;
 }

@@ -13,6 +13,6 @@ public:
     explicit ModifiersPanel(QWidget *parent = 0);
     ~ModifiersPanel();
 
-private:
+//private:
     Ui::ModifiersPanel *ui;
 };

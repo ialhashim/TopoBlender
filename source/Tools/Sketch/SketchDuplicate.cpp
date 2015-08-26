@@ -15,6 +15,8 @@ SketchDuplicate::SketchDuplicate(QWidget *parent) :
 
     connect(ui->acceptButton, SIGNAL(pressed()), SLOT(acceptOperation()));
 
+    connect(ui->groupingOption, SIGNAL(toggled(bool)), SLOT(changeSettings()));
+
     connect(ui->dupT, SIGNAL(toggled(bool)), SLOT(changeSettings()));
     connect(ui->dupRef, SIGNAL(toggled(bool)), SLOT(changeSettings()));
     connect(ui->dupRot, SIGNAL(toggled(bool)), SLOT(changeSettings()));
@@ -45,24 +47,29 @@ QString SketchDuplicate::dupOperation()
 {
     QString opDupT, opDupRef, opDupRot;
 
-    opDupT = QString("dupT,%1,%2,%3,%4")
+    QString groupOption = ui->groupingOption->isChecked() ? "no_group" : "group";
+
+    opDupT = QString("dupT,%1,%2,%3,%4,%5")
             .arg(ui->tCount->value())
             .arg(ui->tX->value())
             .arg(ui->tY->value())
-            .arg(ui->tZ->value());
+            .arg(ui->tZ->value())
+            .arg(groupOption);
 
-    opDupRef = QString("dupRef,%1,%2,%3,%4")
+    opDupRef = QString("dupRef,%1,%2,%3,%4,%5")
             .arg(ui->refX->isChecked())
             .arg(ui->refY->isChecked())
             .arg(ui->refZ->isChecked())
-            .arg(ui->refOffset->value());
+            .arg(ui->refOffset->value())
+            .arg(groupOption);
 
-    opDupRot = QString("dupRot,%1,%2,%3,%4,%5")
+    opDupRot = QString("dupRot,%1,%2,%3,%4,%5,%6")
             .arg(ui->rot_Count->value())
             .arg(ui->rotX->isChecked())
             .arg(ui->rotY->isChecked())
             .arg(ui->rotZ->isChecked())
-            .arg(ui->rotOffset->value());
+            .arg(ui->rotOffset->value())
+            .arg(groupOption);
 
     QString op;
     if(ui->dupT->isChecked()) op = opDupT;

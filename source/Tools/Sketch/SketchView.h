@@ -3,6 +3,7 @@
 #include <QVector3D>
 #include <QMatrix4x4>
 #include <QGraphicsSceneMouseEvent>
+#include <QKeyEvent>
 
 #include "SketchManipulatorTool.h"
 
@@ -62,6 +63,10 @@ public:
 
     QStringList messages;
 
+	// DEBUG visual elements
+	QVector<QVector3D> dbg_lines, dbg_lines2;
+	QVector<QVector3D> dbg_points, dbg_points2;
+
 public slots:
 	void setSketchOp(SketchViewOp toSketchOp);
 
@@ -72,4 +77,6 @@ protected:
 	void wheelEvent(QGraphicsSceneWheelEvent *);
 	QPointF buttonDownCursorPos, mouseMoveCursorPos, buttonUpCursorPos;
 	bool leftButtonDown, rightButtonDown, middleButtonDown;
+
+    void keyPressEvent(QKeyEvent * event);
 };

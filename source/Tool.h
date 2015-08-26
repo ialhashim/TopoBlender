@@ -3,13 +3,15 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 
+class Document;
+
 class Tool : public QGraphicsObject
 {
     Q_OBJECT
     Q_PROPERTY(QRectF bounds READ boundsRect WRITE setBounds)
 
 public:
-    Tool();
+    Tool(Document * document);
 
     QRectF boundingRect() const { return childrenBoundingRect(); }
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
@@ -18,10 +20,8 @@ public:
     QRectF boundsRect() { return bounds; }
     bool isShowBorder;
 
-    QStringList messages;
-
 protected:
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *);
+    Document * document;
 
 public slots:
     void setBounds(const QRectF & newBounds);

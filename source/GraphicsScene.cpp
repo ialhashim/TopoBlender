@@ -2,6 +2,8 @@
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsDropShadowEffect>
+#include <QTimer>
 
 GraphicsScene::GraphicsScene() : isGradientBackground(false)
 {
@@ -54,5 +56,35 @@ QGraphicsObject * GraphicsScene::getObjectByName(QString name)
     }
 
     return nullptr;
+}
+
+void GraphicsScene::displayMessage(QString message, int time)
+{
+    auto textItem = addText(message, QFont("SansSerif", 24));
+    textItem->setDefaultTextColor(Qt::white);
+
+    QGraphicsDropShadowEffect * shadow = new QGraphicsDropShadowEffect();
+    shadow->setColor(QColor(0,0,0,128));
+    shadow->setOffset(3);
+    shadow->setBlurRadius(4);
+    textItem->setGraphicsEffect(shadow);
+    auto textRect = textItem->sceneBoundingRect();
+    textItem->moveBy(this->views().front()->width() * 0.5 - textRect.width() * 0.5,
+                     this->views().front()->height() * 0.5 - textRect.height() * 0.5);
+    textRect = textItem->sceneBoundingRect();
+    textRect.adjust(-20,-20,20,20);
+
+    QPainterPath textRectPath;
+    textRectPath.addRoundedRect(textRect, 15, 15);
+    auto rectItem = addPath(textRectPath, QPen(Qt::transparent), QBrush(QColor(0,0,0,200)));
+
+    textItem->setZValue(500);
+    rectItem->setZValue(499);
+
+    QTimer::singleShot(time, [=]{
+        removeItem(textItem);
+        removeItem(rectItem);
+        update();
+    });
 }
 

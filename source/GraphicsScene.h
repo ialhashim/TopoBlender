@@ -10,6 +10,8 @@ public:
 
     QGraphicsObject *getObjectByName(QString name);
 
+    void displayMessage(QString message, int time = 3000);
+
 protected:
     void drawBackground ( QPainter * painter, const QRectF & rect );
     void drawForeground ( QPainter * painter, const QRectF & rect );

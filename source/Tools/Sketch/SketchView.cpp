@@ -22,7 +22,7 @@ SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewTyp
 QGraphicsObject(parent), rect(QRect(0, 0, 100, 100)), type(type), camera(nullptr), trackball(nullptr),
 leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document(document), sketchOp(SKETCH_NONE)
 {
-	this->setFlags(QGraphicsItem::ItemIsMovable);
+    this->setFlags(QGraphicsItem::ItemIsFocusable);
 
 	camera = new Eigen::Camera();
 	trackball = new Eigen::Trackball();
@@ -106,7 +106,11 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 			Eigen::Matrix4f v = camera->viewMatrix().matrix();
 			p.transposeInPlace();
 			v.transposeInPlace();
-			cameraMatrix = QMatrix4x4(p.data()) * QMatrix4x4(v.data());
+
+			viewMatrix = QMatrix4x4(v.data());
+			projectionMatrix = QMatrix4x4(p.data());
+
+			cameraMatrix = projectionMatrix * viewMatrix;
 
             eyePos = QVector3D(camera->position().x(),camera->position().y(),camera->position().z());
 		}
@@ -148,7 +152,7 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
             // Build grid geometry
             QVector<QVector3D> lines;
             double gridWidth = 10;
-            double gridSpacing = gridWidth / 20.0;
+            double gridSpacing = gridWidth / 30.0;
             for (GLfloat i = -gridWidth; i <= gridWidth; i += gridSpacing) {
                 lines << QVector3D(i, gridWidth, 0); lines << QVector3D(i, -gridWidth, 0);
                 lines << QVector3D(gridWidth, i, 0); lines << QVector3D(-gridWidth, i, 0);
@@ -182,6 +186,17 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
             auto o = toQVector3D(Eigen::Vector3f::Zero() - (sketchPlane->normal() * sketchPlane->offset()));
             glwidget->drawPlane(n,o, cameraMatrix);
         }
+
+		// Draw debug elements
+		{
+			glwidget->glPointSize(6);
+			glwidget->drawPoints(dbg_points, Qt::red, cameraMatrix);
+			glwidget->drawPoints(dbg_points2, Qt::green, cameraMatrix);
+			
+			glwidget->glLineWidth(2);
+			glwidget->drawLines(dbg_lines, Qt::red, cameraMatrix, "lines");
+			glwidget->drawLines(dbg_lines2, Qt::blue, cameraMatrix, "lines");
+		}
 	}
 
 	// End 3D drawing
@@ -192,8 +207,8 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     {
         QRectF r(buttonDownCursorPos, mouseMoveCursorPos);
 
-        painter->fillRect(r, QColor(0,0,255,128));
-        painter->setPen(QPen(Qt::blue,3));
+        painter->fillRect(r, QColor(0,128,255,128));
+        painter->setPen(QPen(Qt::blue,2));
         painter->drawRect(r);
     }
 
@@ -235,6 +250,9 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
 
     // Draw current operation title
     {
+        QColor c = Qt::white;
+        c.setAlphaF(0.75);
+        painter->setPen(c);
         painter->drawText(QPointF(10, rect.height()-20), SketchViewOpName[sketchOp]);
     }
 
@@ -249,17 +267,22 @@ void SketchView::postPaint(QPainter * painter, QWidget *)
     }
 
 	// Draw link
-	if (leftButtonDown || rightButtonDown || middleButtonDown)
+    if (rightButtonDown)
 	{
 		painter->drawLine(buttonDownCursorPos, mouseMoveCursorPos);
 	}
 
 	// Border
     {
-        int bw = 3, hbw = bw * 0.5;
+        painter->setRenderHint(QPainter::Antialiasing, false);
+
+        int bw = 4;
         QPen borderPen(this->isUnderMouse() ? Qt::yellow : Qt::gray, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
         painter->setPen(borderPen);
-        painter->drawRect(this->boundingRect().adjusted(hbw, hbw, -hbw, -hbw));
+        painter->drawRect(this->boundingRect().adjusted(1, 1, -1, -1));
+
+        painter->setRenderHint(QPainter::Antialiasing, true);
+
     }
 }
 
@@ -439,9 +462,9 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 	// Record mouse states
 	buttonDownCursorPos = event->pos();
 	mouseMoveCursorPos = buttonDownCursorPos;
-	if (event->buttons() & Qt::LeftButton) leftButtonDown = true;
-	if (event->buttons() & Qt::RightButton) rightButtonDown = true;
-	if (event->buttons() & Qt::MiddleButton) middleButtonDown = true;
+	leftButtonDown = event->buttons() & Qt::LeftButton;
+	rightButtonDown = event->buttons() & Qt::RightButton;
+	middleButtonDown = event->buttons() & Qt::MiddleButton;
 
 	// Camera movement
     if(rightButtonDown)
@@ -481,11 +504,26 @@ void SketchView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
         if(sketchOp == SELECT_PART)
         {
-            auto proj = sketchPlane->projection(toVector3(screenToWorld(event->pos())));
+			if (type == VIEW_CAMERA)
+			{
+				int screenWidth = rect.width();
+				int screenHeight = rect.height();
+				camera->setViewport(screenWidth, screenHeight);
+				Eigen::Vector3f orig = camera->position();
+				Eigen::Vector3f dir = camera->unProject(Eigen::Vector2f(event->pos().x(), screenHeight - event->pos().y()), 10) - orig;
+				auto rayOrigin = toQVector3D(orig);
+				auto rayDirection = toQVector3D(dir.normalized());
 
-            QVector3D rayOrigin = toQVector3D(proj + sketchPlane->normal() * 100);
-            QVector3D rayDirection = toQVector3D(sketchPlane->normal());
-            document->selectPart(document->firstModelName(), rayOrigin, rayDirection);
+				document->selectPart(document->firstModelName(), rayOrigin, rayDirection);
+			}
+			else
+			{
+				auto proj = sketchPlane->projection(toVector3(screenToWorld(event->pos())));
+
+				QVector3D rayOrigin = toQVector3D(proj + sketchPlane->normal() * 100);
+				QVector3D rayDirection = toQVector3D(sketchPlane->normal());
+				document->selectPart(document->firstModelName(), rayOrigin, rayDirection);
+			}
         }
     }
 
@@ -529,7 +567,11 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 	messages.clear(); messages << "Mouse released." <<
 		QString("%1,%2").arg(buttonUpCursorPos.x()).arg(buttonUpCursorPos.y());
 
+    if(sketchOp == SKETCH_CURVE && sketchPoints.size() > 1) sketchOp = DEFORM_SKETCH;
+
 	sketchPoints.clear();
+
+    this->setFocus();
 
 	scene()->update(sceneBoundingRect());
 }
@@ -553,5 +595,20 @@ void SketchView::wheelEvent(QGraphicsSceneWheelEvent * event)
 		camera->setTarget(t);
 	}
 
-	scene()->update(sceneBoundingRect());
+    scene()->update(sceneBoundingRect());
+}
+
+void SketchView::keyPressEvent(QKeyEvent *event)
+{
+    if(event->key() == Qt::Key_Delete)
+    {
+        document->removeActiveNode(document->firstModelName());
+        setSketchOp(SKETCH_CURVE);
+    }
+
+    if(event->key() == Qt::Key_S) setSketchOp(SKETCH_CURVE);
+    if(event->key() == Qt::Key_M) setSketchOp(TRANSFORM_PART);
+    if(event->key() == Qt::Key_D) setSketchOp(DEFORM_SKETCH);
+
+    scene()->update(sceneBoundingRect());
 }

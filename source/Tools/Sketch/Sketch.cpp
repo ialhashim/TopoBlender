@@ -8,12 +8,14 @@
 #include "Viewer.h"
 #include "Document.h"
 
+#include "SketchView.h"
+
 #include "SketchDuplicate.h"
 #include "ui_SketchDuplicate.h"
 
 #include "ModelConnector.h"
 
-Sketch::Sketch(Document * document, const QRectF &bounds) : document(document)
+Sketch::Sketch(Document * document, const QRectF &bounds) : Tool(document)
 {
     setBounds(bounds);
 
@@ -36,7 +38,8 @@ void Sketch::init()
     auto toolsWidgetContainer = new QWidget();
     toolsWidget = new Ui::SketchToolsWidget();
     toolsWidget->setupUi(toolsWidgetContainer);
-    auto toolsWidgetProxy = scene()->addWidget(toolsWidgetContainer);
+    auto toolsWidgetProxy = new QGraphicsProxyWidget(this);
+    toolsWidgetProxy->setWidget(toolsWidgetContainer);
 
     // Place at bottom left corner
     auto delta = toolsWidgetProxy->sceneBoundingRect().bottomLeft() -
@@ -45,7 +48,8 @@ void Sketch::init()
 
     // Add duplication tool
     dupToolWidget = new SketchDuplicate();
-    dupToolWidgetProxy = scene()->addWidget(dupToolWidget);
+    dupToolWidgetProxy = new QGraphicsProxyWidget(this);
+    dupToolWidgetProxy->setWidget(dupToolWidget);
     auto dupDelta = toolsWidgetProxy->pos() + QPointF(toolsWidgetProxy->size().width(),0);
     dupToolWidgetProxy->moveBy(dupDelta.x(), dupDelta.y());
     dupToolWidgetProxy->setVisible(false);
