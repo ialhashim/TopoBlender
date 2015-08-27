@@ -151,7 +151,7 @@ void Thumbnail::prePaint(QPainter *painter, QWidget *)
     // Radial gradient background
     {
         QRadialGradient grad(rect.center(), rect.width() * 0.5);
-        grad.setColorAt(0, QColor(0,0,0,128));
+        grad.setColorAt(0, QColor(0,0,0,255));
         grad.setColorAt(1, Qt::transparent);
         painter->fillRect(rect, grad);
     }
@@ -200,5 +200,5 @@ Thumbnail::QBasicMesh Thumbnail::buildTetrahedron(float length)
 
 void Thumbnail::mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
-	emit(clicked(data));
+	emit(clicked(this));
 }

@@ -4,6 +4,7 @@
 class ManualBlendView;
 namespace Ui{ class ManualBlendWidget; }
 class QGraphicsProxyWidget;
+class ManualBlendManager;
 
 class ManualBlend : public Tool
 {
@@ -14,9 +15,10 @@ public:
     void init();
 
 protected:
-    ManualBlendView * view;
-    Ui::ManualBlendWidget * widget;
-    QGraphicsProxyWidget *widgetProxy;
+    ManualBlendView* view;
+    Ui::ManualBlendWidget* widget;
+    QGraphicsProxyWidget* widgetProxy;
+	ManualBlendManager* blendManager;
 
 public slots:
     void resizeViews();

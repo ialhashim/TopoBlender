@@ -60,5 +60,5 @@ protected:
 	void mousePressEvent(QGraphicsSceneMouseEvent * event);
 
 signals:
-	void clicked(QVariantMap);
+	void clicked(Thumbnail*);
 };

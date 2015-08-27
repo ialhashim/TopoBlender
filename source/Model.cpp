@@ -573,7 +573,7 @@ void Model::draw(Viewer *glwidget)
 
         QVector<QVector3D> lines;
         auto addLine = [&](Eigen::Vector3d a, Eigen::Vector3d b){
-            Vector3 dir = (a - b) * 0.1;
+            Vector3 dir = (a - b).normalized() * 0.05;
             lines << toQVector3D(a);
             lines << toQVector3D(a - dir);
             lines << toQVector3D(b);

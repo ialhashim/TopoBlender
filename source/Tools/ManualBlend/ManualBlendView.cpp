@@ -11,6 +11,11 @@
 #include "Thumbnail.h"
 #include "Gallery.h"
 
+#include <QGraphicsProxyWidget>
+#include <QVBoxLayout>
+#include <QSlider>
+#include <QPushButton>
+
 ManualBlendView::ManualBlendView(Document *document, QGraphicsItem * parent) : QGraphicsObject(parent), document(document), gallery(nullptr)
 {
     this->setFlags(QGraphicsItem::ItemIsFocusable);
@@ -83,6 +88,15 @@ void ManualBlendView::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
         {
             document->drawModel(document->firstModelName(), glwidget);
         }
+
+		// Draw intermediate geometry
+		{
+			if (!cloudPoints.empty())
+			{
+				glwidget->glPointSize(8);
+				glwidget->drawOrientedPoints(cloudPoints, cloudNormals, cloudColor, cameraMatrix);
+			}
+		}
 
         // Grid: prepare and draw
         {
@@ -175,7 +189,7 @@ void ManualBlendView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 		if (document->getModel(document->firstModelName())->activeNode == nullptr)
 		{
 			// Clear previous suggestions
-			delete gallery;
+			if(gallery) delete gallery;
 			gallery = nullptr;
 		}
 		else
@@ -272,7 +286,7 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 			auto data = sharedData;
 
 			data["targetName"].setValue(targetName);
-			data["targetPartName"].setValue(data);
+			data["targetPartName"].setValue(targetPartName);
 
 			auto targetPartMesh = targetModel->getMesh(targetPartName);
 
@@ -286,14 +300,79 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 				t->addAuxMesh(toBasicMesh(targetModel->getMesh(n->id), QColor(128,128,128,128)));
 			}
 
-			connect(t, SIGNAL(clicked(QVariantMap)), SLOT(suggestionClicked(QVariantMap)));
+			connect(t, SIGNAL(clicked(Thumbnail *)), SLOT(suggestionClicked(Thumbnail *)));
 		}
 	}
 
 	gallery->setPos(galleryPos);
 }
 
-void ManualBlendView::suggestionClicked(QVariantMap data)
+void ManualBlendView::suggestionClicked(Thumbnail * t)
 {
 	((GraphicsScene*)scene())->displayMessage("bingo!", 500);
+
+	// Place exactly where it was
+	auto gallpos = gallery->pos();
+	t->setParentItem(this);
+	t->moveBy(gallpos.x(), gallpos.y());
+
+	// Remove the connection to this
+	t->disconnect(this, SLOT(suggestionClicked(Thumbnail *)));
+
+	// Get blend info
+	QString sourcePartName = t->data["sourcePart"].toString();
+	QString targetName = t->data["targetName"].toString();
+	QString targetPartName = t->data["targetPartName"].toString();
+
+	// Add blending slider & buttons
+	{
+		auto blendControlsWidget = new QWidget;
+		auto blendControlsWidgetLayout = new QVBoxLayout;
+
+		auto blendSlider = new QSlider(Qt::Horizontal);
+		blendSlider->setRange(0, 100);
+		blendControlsWidgetLayout->addWidget(blendSlider);
+
+		auto blendAccept = new QPushButton("Accept");
+		blendControlsWidgetLayout->addWidget(blendAccept);
+		blendControlsWidget->setLayout(blendControlsWidgetLayout);
+		blendControlsWidget->setStyleSheet(".QWidget{ background:transparent; }");
+
+		blendControlsWidget->setMinimumWidth(t->boundingRect().width());
+		blendControlsWidget->setMaximumWidth(t->boundingRect().width());
+
+		auto blendControlsProxy = new QGraphicsProxyWidget(t);
+		blendControlsProxy->setWidget(blendControlsWidget);
+
+		blendControlsProxy->setPos(0,t->rect.height());
+
+		// Interaction
+		connect(blendSlider, &QSlider::valueChanged, [=](int value){
+			emit( doBlend(sourcePartName, targetName, targetPartName, value) );
+		});
+
+		t->connect(blendAccept, &QPushButton::pressed, [=](){
+			emit( finalizeBlend(sourcePartName, targetName, targetPartName, blendSlider->value()) );
+			cloudPoints.clear();
+			cloudNormals.clear();
+			t->deleteLater();
+		});
+	}
+
+	// Close gallery
+	delete gallery;
+	gallery = nullptr;
+}
+
+void ManualBlendView::cloudReceived(QPair< QVector<Eigen::Vector3f>, QVector<Eigen::Vector3f> > cloud)
+{
+	cloudPoints.clear();
+	cloudNormals.clear();
+
+	for (auto p : cloud.first) cloudPoints << QVector3D(p[0],p[1],p[2]);
+	for (auto p : cloud.second) cloudNormals << QVector3D(p[0], p[1], p[2]);
+
+	auto n = document->getModel(document->firstModelName())->activeNode;
+	n->vis_property["isHidden"].setValue(true);
+	cloudColor = n->vis_property["color"].value<QColor>();
 }

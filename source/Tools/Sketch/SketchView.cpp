@@ -188,6 +188,7 @@ void SketchView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
         }
 
 		// Draw debug elements
+		if (!dbg_points.empty() || !dbg_lines.empty())
 		{
 			glwidget->glPointSize(6);
 			glwidget->drawPoints(dbg_points, Qt::red, cameraMatrix);

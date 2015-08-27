@@ -7,8 +7,11 @@
 #include <QKeyEvent>
 #include <QPainter>
 
+#include <Eigen/Core>
+
 class Document;
 class Gallery;
+class Thumbnail;
 
 namespace Eigen{ class Camera; class Trackball; class Plane; }
 
@@ -31,7 +34,9 @@ public:
 
 public slots:
 	void suggestParts(QPointF galleryPos);
-	void suggestionClicked(QVariantMap data);
+	void suggestionClicked(Thumbnail * t);
+
+	void cloudReceived(QPair< QVector<Eigen::Vector3f>, QVector<Eigen::Vector3f> >);
 
 protected:
     Document * document;
@@ -40,6 +45,11 @@ protected:
     // Camera movement
     Eigen::Camera* camera;
     Eigen::Trackball* trackball;
+
+	// Intermediate geometry
+	QVector<QVector3D> cloudPoints;
+	QVector<QVector3D> cloudNormals;
+	QColor cloudColor;
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);
@@ -50,4 +60,8 @@ protected:
     bool leftButtonDown, rightButtonDown, middleButtonDown;
 
     void keyPressEvent(QKeyEvent * event);
+
+signals:
+	void doBlend(QString sourcePartName, QString targetName, QString targetPartName, int value);
+	void finalizeBlend(QString sourcePartName, QString targetName, QString targetPartName, int value);
 };

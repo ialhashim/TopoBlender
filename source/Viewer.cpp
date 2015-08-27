@@ -265,6 +265,67 @@ void Viewer::drawPoints(const QVector< QVector3D > & points, QColor color, QMatr
     glPointSize(1.0f);
 }
 
+void Viewer::drawOrientedPoints(const QVector< QVector3D > & points, 
+	const QVector< QVector3D > & normals, QColor useColor, QMatrix4x4 camera)
+{
+	if (points.empty() || normals.empty()) return;
+
+	// Draw meshes:
+	glEnable(GL_DEPTH_TEST);
+	glCullFace(GL_BACK);
+
+	// Activate shader
+	auto & program = *shaders["mesh"];
+	program.bind();
+
+	// Attributes
+	int vertexLocation = program.attributeLocation("vertex");
+	int normalLocation = program.attributeLocation("normal");
+	int colorLocation = program.attributeLocation("color");
+
+	program.enableAttributeArray(vertexLocation);
+	program.enableAttributeArray(normalLocation);
+	program.enableAttributeArray(colorLocation);
+
+	// Uniforms
+	int matrixLocation = program.uniformLocation("matrix");
+	int lightPosLocation = program.uniformLocation("lightPos");
+	int viewPosLocation = program.uniformLocation("viewPos");
+	int lightColorLocation = program.uniformLocation("lightColor");
+
+	program.setUniformValue(matrixLocation, pvm);
+	program.setUniformValue(lightPosLocation, eyePos);
+	program.setUniformValue(viewPosLocation, eyePos);
+	program.setUniformValue(lightColorLocation, QVector3D(1, 1, 1));
+
+	// Pack geometry, normals, and colors
+	QVector<GLfloat> vertex, normal, color;
+
+	for (int v = 0; v < points.size(); v++){
+		for (int i = 0; i < 3; i++){
+			vertex << points[v][i];
+			normal << normals[v][i];
+		}
+		color << useColor.redF() << useColor.greenF() << useColor.blueF() << useColor.alphaF();
+	}
+
+	// Shader data
+	program.setAttributeArray(vertexLocation, &vertex[0], 3);
+	program.setAttributeArray(normalLocation, &normal[0], 3);
+	program.setAttributeArray(colorLocation, &color[0], 4);
+
+	// Draw
+	glDrawArrays(GL_POINTS, 0, points.size());
+
+	program.disableAttributeArray(vertexLocation);
+	program.disableAttributeArray(normalLocation);
+	program.disableAttributeArray(colorLocation);
+
+	program.release();
+
+	glDisable(GL_DEPTH_TEST);
+}
+
 void Viewer::drawLines(const QVector< QVector3D > &lines, QColor color, QMatrix4x4 camera, QString shaderName)
 {
     if(lines.empty()) return;

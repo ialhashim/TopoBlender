@@ -26,7 +26,8 @@ SOURCES +=  main.cpp\
             Tools/Sketch/SketchDuplicate.cpp \
 # Manual blend tool
             Tools/ManualBlend/ManualBlend.cpp \
-            Tools/ManualBlend/ManualBlendView.cpp
+            Tools/ManualBlend/ManualBlendView.cpp \
+    Tools/ManualBlend/ManualBlendManager.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -50,7 +51,8 @@ HEADERS  += mainwindow.h \
             Tools/Sketch/SketchDuplicate.h \
 # Manual blend tool
             Tools/ManualBlend/ManualBlend.h \
-            Tools/ManualBlend/ManualBlendView.h
+            Tools/ManualBlend/ManualBlendView.h \
+    Tools/ManualBlend/ManualBlendManager.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \
@@ -96,6 +98,10 @@ INCLUDEPATH += ../../GeoTopo/source/GeoTopoLib
 # StructureGraph library
 LIBS += -L$$PWD/../../GeoTopo/source/StructureGraphLib/lib/$$CFG -lStructureGraphLib
 INCLUDEPATH += ../../GeoTopo/source/StructureGraphLib
+
+# Surface Reconstruction library
+LIBS += -L$$PWD/../../GeoTopo/source/Reconstruction/lib/$$CFG -lReconstruction
+INCLUDEPATH += ../../GeoTopo/source/Reconstruction
 
 # Surface mesh library
 LIBS += -L$$PWD/../../GeoTopo/source/external/SurfaceMesh/lib/$$CFG -lSurfaceMesh

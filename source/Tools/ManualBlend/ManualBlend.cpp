@@ -1,5 +1,6 @@
 #include "ManualBlend.h"
 #include "ManualBlendView.h"
+#include "ManualBlendManager.h"
 #include "GraphicsScene.h"
 #include "GraphicsView.h"
 #include "Gallery.h"
@@ -22,6 +23,13 @@ void ManualBlend::init()
 {
     view = new ManualBlendView(document, this);
 
+	blendManager = new ManualBlendManager(document);
+
+	QObject::connect(view, SIGNAL(doBlend(QString, QString, QString, int)), blendManager, SLOT(doBlend(QString, QString, QString, int)));
+	QObject::connect(view, SIGNAL(finalizeBlend(QString, QString, QString, int)), blendManager, SLOT(finalizeBlend(QString, QString, QString, int)));
+	QObject::connect(blendManager, SIGNAL(cloudReady(QPair< QVector<Eigen::Vector3f>, QVector<Eigen::Vector3f> >)), 
+		view, SLOT(cloudReceived(QPair< QVector<Eigen::Vector3f>, QVector<Eigen::Vector3f> >)));
+	 
     // Add widget
     auto toolsWidgetContainer = new QWidget();
     widget = new Ui::ManualBlendWidget();
@@ -29,7 +37,7 @@ void ManualBlend::init()
     widgetProxy = new QGraphicsProxyWidget(this);
     widgetProxy->setWidget(toolsWidgetContainer);
 
-    // Fill categoies box
+    // Fill categories box
     {
         for(auto cat : document->categories.keys()){
             widget->categoriesBox->insertItem(widget->categoriesBox->count(), cat);

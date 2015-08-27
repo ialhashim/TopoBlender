@@ -20,7 +20,8 @@ public:
 
     // Draw primitives
     void drawPoints(const QVector<QVector3D> &points, QColor color, QMatrix4x4 camera, bool isConnected = false);
-    void drawLines(const QVector<QVector3D> &lines, QColor color, QMatrix4x4 camera, QString shaderName);
+	void drawOrientedPoints(const QVector< QVector3D > & points, const QVector< QVector3D > & normals, QColor color, QMatrix4x4 camera);
+	void drawLines(const QVector<QVector3D> &lines, QColor color, QMatrix4x4 camera, QString shaderName);
     void drawBox(double width, double length, double height, QMatrix4x4 camera);
     void drawQuad(const QImage &img);
     void drawPlane(QVector3D normal, QVector3D origin, QMatrix4x4 camera);
