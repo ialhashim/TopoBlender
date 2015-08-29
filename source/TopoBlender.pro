@@ -27,7 +27,14 @@ SOURCES +=  main.cpp\
 # Manual blend tool
             Tools/ManualBlend/ManualBlend.cpp \
             Tools/ManualBlend/ManualBlendView.cpp \
-    Tools/ManualBlend/ManualBlendManager.cpp
+            Tools/ManualBlend/ManualBlendManager.cpp \
+# Auto blend tool
+            Tools/AutoBlend/AutoBlend.cpp \
+# Structure transfer tool
+            Tools/StructureTransfer/StructureTransfer.cpp \
+            Tools/StructureTransfer/StructureTransferView.cpp \
+# Explore tool
+            Tools/Explore/Explore.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -52,7 +59,14 @@ HEADERS  += mainwindow.h \
 # Manual blend tool
             Tools/ManualBlend/ManualBlend.h \
             Tools/ManualBlend/ManualBlendView.h \
-    Tools/ManualBlend/ManualBlendManager.h
+            Tools/ManualBlend/ManualBlendManager.h \
+# Auto blend tool
+            Tools/AutoBlend/AutoBlend.h \
+# Structure transfer tool
+            Tools/StructureTransfer/StructureTransfer.h \
+            Tools/StructureTransfer/StructureTransferView.h \
+# Explore tool
+            Tools/Explore/Explore.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \
@@ -61,7 +75,13 @@ FORMS    += mainwindow.ui \
             Tools/Sketch/Sketch.ui \
             Tools/Sketch/SketchDuplicate.ui \
 # Manual blend tool
-            Tools/ManualBlend/ManualBlend.ui
+            Tools/ManualBlend/ManualBlend.ui \
+# Auto blend tool
+            Tools/AutoBlend/AutoBlend.ui \
+# Structure transfer tool
+            Tools/StructureTransfer/StructureTransfer.ui \
+# Explore tool
+            Tools/Explore/Explore.ui
 
 win32{
     # Eigen 3.2.5 introduced some new warnings

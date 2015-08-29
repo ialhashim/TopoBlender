@@ -2,9 +2,8 @@
 #include "Tool.h"
 
 class ManualBlendView;
-namespace Ui{ class ManualBlendWidget; }
-class QGraphicsProxyWidget;
 class ManualBlendManager;
+namespace Ui{ class ManualBlendWidget; }
 
 class ManualBlend : public Tool
 {

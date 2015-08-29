@@ -2,7 +2,9 @@
 #include "Model.h"
 #include "Viewer.h"
 
-#include <QProgressBar>
+#include <QApplication>
+#include <QDesktopWidget>
+#include <QProgressDialog>
 #include <QTimer>
 #include <QThread>
 
@@ -128,49 +130,118 @@ void Document::analyze(QString categoryName)
     if(!categories.keys().contains(categoryName)) return;
 
     // Create progress bar
-    auto bar = new QProgressBar();
-    bar->setMaximum(99);
-    bar->setValue(0);
+    auto bar = new QProgressDialog("Please wait...", QString(), 0, 100, 0);
+    bar->setWindowTitle("Processing");
     bar->show();
+    QRect screenGeometry = QApplication::desktop()->screenGeometry();
+    int x = (screenGeometry.width()-bar->width()) / 2;
+    int y = (screenGeometry.height()-bar->height()) / 2;
+    bar->move(x, y);
 
     auto worker = new DocumentAnalyzeWorker(this);
 
     QThread* thread = new QThread;
     worker->moveToThread(thread);
-    connect(thread, SIGNAL (started()), worker, SLOT (process()));
+    connect(thread, SIGNAL (started()), worker, SLOT (processShapeDataset()));
     connect(worker, SIGNAL (finished()), thread, SLOT (quit()));
+    connect(worker, SIGNAL (finished()), this, SLOT (sayCategoryAnalysisDone()));
     connect(worker, SIGNAL (finished()), bar, SLOT (deleteLater()));
     connect(worker, SIGNAL (finished()), worker, SLOT (deleteLater()));
     connect(thread, SIGNAL (finished()), thread, SLOT (deleteLater()));
-    thread->start();
 
     // Connect progress bar to worker
     bar->connect(worker, SIGNAL(progress(int)), SLOT(setValue(int)));
+    bar->connect(worker, SIGNAL(progressText(QString)), SLOT(setLabelText(QString)));
 
+    thread->start(QThread::HighestPriority);
+}
+
+void Document::computePairwise(QString categoryName)
+{
+    if(!categories.keys().contains(categoryName)) return;
+
+    // Create progress bar
+    auto bar = new QProgressDialog("Please wait...", QString(), 0, 100, 0);
+    bar->setWindowTitle("Processing");
+    bar->show();
+    QRect screenGeometry = QApplication::desktop()->screenGeometry();
+    int x = (screenGeometry.width()-bar->width()) / 2;
+    int y = (screenGeometry.height()-bar->height()) / 2;
+    bar->move(x, y);
+
+    auto worker = new DocumentAnalyzeWorker(this);
+
+    QThread* thread = new QThread;
+
+    worker->moveToThread(thread);
+    connect(thread, SIGNAL (started()), worker, SLOT (processAllPairWise()));
+    connect(worker, SIGNAL (finished()), thread, SLOT (quit()));
+    connect(worker, SIGNAL (finished()), this, SLOT (sayPairwiseAnalysisDone()));
+    connect(worker, SIGNAL (finished()), bar, SLOT (deleteLater()));
+    connect(worker, SIGNAL (finished()), worker, SLOT (deleteLater()));
+    connect(thread, SIGNAL (finished()), thread, SLOT (deleteLater()));
+
+    // Connect progress bar to worker
+    bar->connect(worker, SIGNAL(progress(int)), SLOT(setValue(int)));
+    bar->connect(worker, SIGNAL(progressText(QString)), SLOT(setLabelText(QString)));
+
+    thread->start(QThread::HighestPriority);
+}
+
+void Document::sayCategoryAnalysisDone()
+{
+    emit(categoryAnalysisDone());
+}
+
+void Document::sayPairwiseAnalysisDone()
+{
+    emit(categoryPairwiseDone());
+}
+
+void Document::savePairwise(QString filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+
+    QTextStream out(&file);
+
+    for (auto s : datasetMatching.keys())
+        for (auto t : datasetMatching[s].keys())
+            out << s << " " << t << " " << datasetMatching[s][t]["min_cost"].toDouble() << "\n";
+}
+
+void Document::loadPairwise(QString filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QTextStream in(&file);
+    auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+
+    for (auto line : lines){
+        auto item = line.split(QRegExp("[ \t]"), QString::SkipEmptyParts);
+        if (item.size() != 3) continue;
+        datasetMatching[item[0]][item[1]]["min_cost"] = item[2].toDouble();
+    }
 }
 
 void Document::saveDatasetCorr(QString filename)
 {
-	auto modelName = firstModelName();
-	QString matching_file = datasetPath + "/" + modelName + "_matches.txt";
-
-	QFile file(matching_file);
+    QFile file(filename);
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
 
 	QTextStream out(&file);
-	
-	for (auto p : datasetCorr.keys())
-		for (auto t : datasetCorr[p].keys())
-			for (auto q : datasetCorr[p][t])
-				out << p << " " << t << " " << q << "\n";
+
+    for (auto s : datasetCorr.keys())
+        for (auto p : datasetCorr[s].keys())
+            for (auto t : datasetCorr[s][p].keys())
+                for (auto q : datasetCorr[s][p][t])
+                    out << s << " " << p << " " << t << " " << q << "\n";
 }
 
 void Document::loadDatasetCorr(QString filename)
 {
-	auto modelName = firstModelName();
-	QString matching_file = datasetPath + "/" + modelName + "_matches.txt";
-
-	QFile file(matching_file);
+    QFile file(filename);
 	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
 
 	QTextStream in(&file);
@@ -178,9 +249,9 @@ void Document::loadDatasetCorr(QString filename)
 
 	for (auto line : lines){
 		auto item = line.split(QRegExp("[ \t]"), QString::SkipEmptyParts);
-		if (item.size() != 3) continue;
-		datasetCorr[item[0]][item[1]].push_back(item[2]);
-	}
+        if (item.size() != 4) continue;
+        datasetCorr[item[0]][item[1]][item[2]].push_back(item[3]);
+    }
 }
 
 void Document::drawModel(QString name, QWidget *widget)

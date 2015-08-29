@@ -29,12 +29,18 @@ public:
     QString currentCategory;
     bool loadDataset(QString datasetFolder);
     QString categoryOf(QString modelName);
-    void analyze(QString categoryName);
 
 	// Computed correspondence
-	QMap< QString, QMap<QString,QStringList> > datasetCorr;
+    QMap< QString, QMap< QString, QMap<QString,QStringList> > > datasetCorr;
+    void analyze(QString categoryName);
 	void saveDatasetCorr(QString filename);
-	void loadDatasetCorr(QString filename);
+    void loadDatasetCorr(QString filename);
+
+    // Compute pair-wise model matchings
+    QMap< QString, QMap< QString, QVariantMap> > datasetMatching;
+    void computePairwise(QString categoryName);
+    void savePairwise(QString filename);
+    void loadPairwise(QString filename);
 
     // Visualization:
     void drawModel(QString modelName, QWidget * widget);
@@ -74,7 +80,11 @@ protected:
 
 signals:
     void analyzeProgress(int);
+    void categoryAnalysisDone();
+    void categoryPairwiseDone();
 
 public slots:
+    void sayCategoryAnalysisDone();
+    void sayPairwiseAnalysisDone();
 };
 

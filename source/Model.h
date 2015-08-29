@@ -36,6 +36,8 @@ public:
 
     Structure::ShapeGraph * cloneAsShapeGraph();
 
+	QString name();
+
 protected:
     QVector< Structure::Node* > makeDuplicates(Structure::Node* n, QString duplicationOp);
 

@@ -25,7 +25,9 @@ void ManualBlendManager::doBlend(QString source_part_name, QString target_name, 
 		this->targetName = target_name;
 		this->targetPartName = target_part_name;
 
-		auto source = document->getModel(document->firstModelName());
+        QString sourceName = document->firstModelName();
+
+        auto source = document->getModel(sourceName);
 		auto target = document->cacheModel(targetName);
 
 		int numSamples = 2500;
@@ -42,13 +44,13 @@ void ManualBlendManager::doBlend(QString source_part_name, QString target_name, 
 			}
 			else
 			{
-				if (document->datasetCorr[sid][targetName].empty())
+                if (document->datasetCorr[sourceName][sid][targetName].empty())
 				{
 					gcorr->setNonCorresSource(sid);
 				}
 				else
 				{
-					auto tid = document->datasetCorr[sid][targetName].front();
+                    auto tid = document->datasetCorr[sourceName][sid][targetName].front();
 					gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
 				}
 			}

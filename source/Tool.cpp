@@ -7,7 +7,7 @@ Tool::Tool(Document *document) : document(document), isShowBorder(false)
     //this->setFlags( QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable );
 }
 
-void Tool::paint(QPainter *painter, const QStyleOptionGraphicsItem * style, QWidget * widget)
+void Tool::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
     if(isShowBorder){
         painter->setPen(QPen(Qt::red, 5));

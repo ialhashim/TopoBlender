@@ -6,12 +6,13 @@
 #include <QGraphicsSceneWheelEvent>
 #include <QGraphicsDropShadowEffect>
 
-Gallery::Gallery(QGraphicsItem *parent, QRectF rect, int numColumns, QRectF defaultItemRect) : QGraphicsObject(parent),
+Gallery::Gallery(QGraphicsItem *parent, QRectF rect, int numColumns, QRectF defaultItemRect, bool isFixedSize) : QGraphicsObject(parent),
 rect(rect), numColumns(numColumns), defaultItemRect(defaultItemRect)
 {
     setFlag( QGraphicsItem::ItemClipsChildrenToShape );
 
     // Create scrollbar
+    if(!isFixedSize)
 	{
 		int sw = 16;
         scrollbar = new QScrollBar(Qt::Vertical);
@@ -64,6 +65,7 @@ Thumbnail * Gallery::addTextItem(QString text, QVariantMap data)
     auto t = new Thumbnail(this, defaultItemRect);
     t->setCaption(text);
     t->setData(data);
+    t->setMesh(Thumbnail::QBasicMesh());
     items.push_back(t);
 
     auto r = nextItemRect();
@@ -96,6 +98,18 @@ QRectF Gallery::nextItemRect()
     double x = col * defaultItemRect.width();
     double y = row * defaultItemRect.height();
     return QRectF(x,y,defaultItemRect.width(), defaultItemRect.height());
+}
+
+void Gallery::clearThumbnails()
+{
+    for(auto t : items) t->deleteLater();
+}
+
+QVector<Thumbnail *> Gallery::getSelected()
+{
+    QVector<Thumbnail *> result;
+    for(auto t : items) if(t->isSelected()) result << t;
+    return result;
 }
 
 void Gallery::wheelEvent(QGraphicsSceneWheelEvent * event)

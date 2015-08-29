@@ -17,10 +17,9 @@
 
 Sketch::Sketch(Document * document, const QRectF &bounds) : Tool(document)
 {
-    setBounds(bounds);
-
     connect(this, SIGNAL(boundsChanged()), SLOT(resizeViews()));
 
+    setBounds(bounds);
     setObjectName("sketch");
 }
 

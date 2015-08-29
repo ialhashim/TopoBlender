@@ -231,8 +231,9 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 	auto model = document->getModel(document->firstModelName());
 	if (model == nullptr || model->activeNode == nullptr) return;
 
+    QString sourceName = document->firstModelName();
 	QString sourcePart = model->activeNode->id;
-	if (document->datasetCorr[sourcePart].empty()){
+    if (document->datasetCorr[sourceName][sourcePart].empty()){
 		((GraphicsScene*)scene())->displayMessage("No correspondence found", 500);
 		return;
 	}
@@ -277,11 +278,11 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 		return mesh;
 	};
 
-	for (auto targetName : document->datasetCorr[sourcePart].keys())
+    for (auto targetName : document->datasetCorr[sourceName][sourcePart].keys())
 	{
 		auto targetModel = document->cacheModel(targetName);
 
-		for (auto targetPartName : document->datasetCorr[sourcePart][targetName])
+        for (auto targetPartName : document->datasetCorr[sourceName][sourcePart][targetName])
 		{
 			auto data = sharedData;
 
@@ -309,7 +310,7 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 
 void ManualBlendView::suggestionClicked(Thumbnail * t)
 {
-	((GraphicsScene*)scene())->displayMessage("bingo!", 500);
+    //((GraphicsScene*)scene())->displayMessage("bingo!", 500);
 
 	// Place exactly where it was
 	auto gallpos = gallery->pos();

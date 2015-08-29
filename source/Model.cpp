@@ -601,7 +601,7 @@ void Model::draw(Viewer *glwidget)
     glwidget->glDisable(GL_DEPTH_TEST);
     //glwidget->glDisable(GL_CULL_FACE);
 
-    if(true)
+    if(ShapeGraph::property["showEdges"].toBool())
     {
         QVector<QVector3D> lines;
 
@@ -722,4 +722,9 @@ Structure::ShapeGraph* Model::cloneAsShapeGraph()
     clone->animation_index = animation_index;
     clone->animation_debug = animation_debug;
     return clone;
+}
+
+QString Model::name()
+{
+	return QFileInfo(Graph::property["name"].toString()).dir().dirName();
 }

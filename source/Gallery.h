@@ -11,7 +11,7 @@ class Gallery : public QGraphicsObject
 
 public:
 	Gallery(QGraphicsItem *parent, QRectF rect = QRectF(0, 0, 512, 300), 
-		int numColumns = 4, QRectF defaultItemRect = QRectF(0, 0, 128, 128));
+        int numColumns = 4, QRectF defaultItemRect = QRectF(0, 0, 128, 128), bool isFixedSize = false);
 
 	QRectF rect;
     QRectF boundingRect() const { return rect; }
@@ -27,6 +27,9 @@ public:
 	Thumbnail * addMeshItem(Thumbnail::QBasicMesh mesh, QVariantMap data = QVariantMap());
 
     QRectF nextItemRect();
+
+    void clearThumbnails();
+    QVector<Thumbnail *> getSelected();
 
 protected:
     QVector<Thumbnail*> items;

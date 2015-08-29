@@ -36,9 +36,9 @@ public:
 
 public:
     void setImage(QImage image){ img = image.width() <= rect.width() ?
-                    image : image.scaledToWidth(rect.width(), Qt::SmoothTransformation); }
+                    image : image.scaledToWidth(rect.width(), Qt::SmoothTransformation); isTempImage = false; }
     void setCaption(QString text) { caption = text; }
-	void setMesh(QBasicMesh shape) { mesh = shape; }
+    void setMesh(QBasicMesh shape = QBasicMesh()) { mesh = shape; }
     void set(QImage image, QString text, QBasicMesh shape){
         setImage(image);setCaption(text);setMesh(shape);
     }
@@ -56,9 +56,12 @@ protected:
     QBasicMesh mesh;
 	QImage meshImage;
 	QVector<QBasicMesh> auxMeshes;
+    bool isTempImage;
 
-	void mousePressEvent(QGraphicsSceneMouseEvent * event);
+    void mousePressEvent(QGraphicsSceneMouseEvent *);
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
 
 signals:
 	void clicked(Thumbnail*);
+    void doubleClicked(Thumbnail*);
 };

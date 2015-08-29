@@ -17,6 +17,9 @@ Thumbnail::Thumbnail(QGraphicsItem *parent, QRectF rect) : QGraphicsObject(paren
     setImage(QImage(":/icons/thumbnail.png"));
     setCaption("thumbnail");
     setMesh(Thumbnail::buildTetrahedron(1.0));
+
+    // Show default image until something changes it
+    isTempImage = true;
 }
 
 void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *widget)
@@ -37,9 +40,9 @@ void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidg
     }
 
     // Draw 3D mesh
-    if(mesh.points.size())
+    if(mesh.points.size() || auxMeshes.size())
 	{
-		if (img.isNull())
+        if (img.isNull() || isTempImage)
 		{
 			auto glwidget = (Viewer*)widget;
 			if (glwidget)
@@ -69,7 +72,8 @@ void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidg
 				glwidget->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				glwidget->glViewport(0, 0, renderFbo.size().width(), renderFbo.size().height());
 				
-				glwidget->drawTriangles(mesh.color, mesh.points, mesh.normals, pvm);
+                if(mesh.points.size())
+                    glwidget->drawTriangles(mesh.color, mesh.points, mesh.normals, pvm);
 
 				// Draw aux meshes
 				for (auto auxmesh : auxMeshes)
@@ -79,7 +83,7 @@ void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidg
 				glwidget->glFlush();
 
 				renderFbo.release();
-				img = renderFbo.toImage().scaledToWidth(rect.width(), Qt::SmoothTransformation);
+                this->setImage( renderFbo.toImage().scaledToWidth(rect.width(), Qt::SmoothTransformation) );
 
 				// Thanks for sharing!
 				glwidget->makeCurrent();
@@ -161,9 +165,15 @@ void Thumbnail::postPaint(QPainter * painter, QWidget *)
 {
 	if (this->isUnderMouse()){
 		painter->setRenderHint(QPainter::Antialiasing, false);
-		painter->setPen(QPen(Qt::yellow, 2));
-		painter->drawRect(rect.adjusted(2,2,-2,-2));
+        painter->setPen(QPen(QColor(255,255,0,128), 1));
+        painter->drawRect(rect.adjusted(1,1,-1,-1));
 	}
+
+    if (this->isSelected()){
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        painter->setPen(QPen(Qt::yellow, 4));
+        painter->drawRect(rect);
+    }
 }
 
 Thumbnail::QBasicMesh Thumbnail::buildTetrahedron(float length)
@@ -198,7 +208,12 @@ Thumbnail::QBasicMesh Thumbnail::buildTetrahedron(float length)
     return m;
 }
 
-void Thumbnail::mousePressEvent(QGraphicsSceneMouseEvent * event)
+void Thumbnail::mousePressEvent(QGraphicsSceneMouseEvent *)
 {
-	emit(clicked(this));
+    emit(clicked(this));
+}
+
+void Thumbnail::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *)
+{
+    emit(doubleClicked(this));
 }

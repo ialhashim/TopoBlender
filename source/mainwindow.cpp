@@ -15,6 +15,9 @@
 
 #include "Tools/Sketch/Sketch.h"
 #include "Tools/ManualBlend/ManualBlend.h"
+#include "Tools/AutoBlend/AutoBlend.h"
+#include "Tools/StructureTransfer/StructureTransfer.h"
+#include "Tools/Explore/Explore.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -95,6 +98,45 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             tools.push_back(manualBlender);
         }
 
+        // Auto blending
+        {
+            auto autoBlender = new AutoBlend(document, toolsRect);
+            autoBlender->connect(ui->graphicsView, SIGNAL(resized(QRectF)), SLOT(setBounds(QRectF)));
+
+            autoBlender->setVisible(false);
+            scene->addItem(autoBlender);
+            autoBlender->moveBy(modifiers->rect().width(),0);
+            autoBlender->init();
+
+            tools.push_back(autoBlender);
+        }
+
+        // Structure transfer
+        {
+            auto structureTransfer = new StructureTransfer(document, toolsRect);
+            structureTransfer->connect(ui->graphicsView, SIGNAL(resized(QRectF)), SLOT(setBounds(QRectF)));
+
+            structureTransfer->setVisible(false);
+            scene->addItem(structureTransfer);
+            structureTransfer->moveBy(modifiers->rect().width(),0);
+            structureTransfer->init();
+
+            tools.push_back(structureTransfer);
+        }
+
+        // Explore
+        {
+            auto explore = new Explore(document, toolsRect);
+            explore->connect(ui->graphicsView, SIGNAL(resized(QRectF)), SLOT(setBounds(QRectF)));
+
+            explore->setVisible(false);
+            scene->addItem(explore);
+            explore->moveBy(modifiers->rect().width(),0);
+            explore->init();
+
+            tools.push_back(explore);
+        }
+
         // Connect buttons with tools behavior
         {
             connect(modifiers->ui->loadButton, &QPushButton::pressed, [&](){
@@ -115,6 +157,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             connect(modifiers->ui->manualBlendButton, &QPushButton::pressed, [&](){
                 document->deselectAll(document->firstModelName());
                 showTool(ManualBlend::staticMetaObject.className());
+            });
+
+            connect(modifiers->ui->autoBlendButton, &QPushButton::pressed, [&](){
+                document->deselectAll(document->firstModelName());
+                showTool(AutoBlend::staticMetaObject.className());
+            });
+
+            connect(modifiers->ui->structureTransferButton, &QPushButton::pressed, [&](){
+                document->deselectAll(document->firstModelName());
+                showTool(StructureTransfer::staticMetaObject.className());
+            });
+
+            connect(modifiers->ui->exploreButton, &QPushButton::pressed, [&](){
+                document->deselectAll(document->firstModelName());
+                showTool(Explore::staticMetaObject.className());
             });
         }
     }

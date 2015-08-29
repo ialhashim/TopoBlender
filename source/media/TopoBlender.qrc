@@ -8,4 +8,7 @@
         <file>mb_category.png</file>
         <file>mb_analyze.png</file>
     </qresource>
+    <qresource prefix="/icons/StructureTransfer">
+        <file>st_resample.png</file>
+    </qresource>
 </RCC>

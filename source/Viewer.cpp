@@ -293,7 +293,7 @@ void Viewer::drawOrientedPoints(const QVector< QVector3D > & points,
 	int viewPosLocation = program.uniformLocation("viewPos");
 	int lightColorLocation = program.uniformLocation("lightColor");
 
-	program.setUniformValue(matrixLocation, pvm);
+    program.setUniformValue(matrixLocation, camera);
 	program.setUniformValue(lightPosLocation, eyePos);
 	program.setUniformValue(viewPosLocation, eyePos);
 	program.setUniformValue(lightColorLocation, QVector3D(1, 1, 1));

@@ -65,5 +65,7 @@ ModelConnector::ModelConnector(Model *g)
             //qDebug() << "Adding edge: " + nid + " - " + edge.second;
         }
     }
+
+	g->ShapeGraph::property["showEdges"].setValue(true);
 }
 

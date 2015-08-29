@@ -1,6 +1,7 @@
 #pragma once
 #include <QGraphicsObject>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsProxyWidget>
 #include <QPainter>
 
 class Document;
@@ -20,6 +21,7 @@ public:
     QRectF boundsRect() { return bounds; }
     bool isShowBorder;
 
+    void init(){}
 protected:
     Document * document;
 

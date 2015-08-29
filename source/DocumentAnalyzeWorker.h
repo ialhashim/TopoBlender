@@ -8,9 +8,11 @@ public:
     Document * document;
 
 public slots:
-    void process();
+    void processAllPairWise();
+    void processShapeDataset();
 
 signals:
     void finished();
     void progress(int);
+    void progressText(QString);
 };
