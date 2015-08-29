@@ -13,10 +13,12 @@
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
 
+Q_DECLARE_METATYPE(Array2D_Vector3)
+
 #include "EnergyGuidedDeformation.h"
 #include "EncodeDecodeGeometry.h"
 
-Q_DECLARE_METATYPE(Array2D_Vector3)
+#include "IsotropicRemesher.h"
 
 StructureTransfer::StructureTransfer(Document *document, const QRectF &bounds) : Tool(document), view(nullptr)
 {
@@ -72,7 +74,15 @@ void StructureTransfer::init()
         });
 
 		connect(widget->resampleButton, &QPushButton::pressed, [&](){
-			
+			auto sourceModel = document->getModel(document->firstModelName());
+
+			for (auto n : sourceModel->nodes)
+			{
+				auto m = sourceModel->getMesh(n->id);
+
+				Remesh::IsotropicRemesher mesher(m);
+				mesher.apply();
+			}
 		});
 		
         connect(document, &Document::categoryAnalysisDone, [=](){
