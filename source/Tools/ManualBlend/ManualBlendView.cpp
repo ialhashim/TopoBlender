@@ -244,7 +244,7 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 	QRectF galleryRect(0, 0, thumbRect.width() * numCol, thumbRect.height() * numRow);
 	
 	if (gallery) gallery->deleteLater();
-	gallery = new Gallery(this, galleryRect, numCol, thumbRect);
+    gallery = new Gallery(this, galleryRect, thumbRect);
 
 	// View settings
 	camera->setViewport(thumbRect.width(), thumbRect.height()); // modify
@@ -358,6 +358,8 @@ void ManualBlendView::suggestionClicked(Thumbnail * t)
 			cloudNormals.clear();
 			t->deleteLater();
 		});
+
+        blendSlider->setValue(50);
 	}
 
 	// Close gallery
@@ -367,13 +369,33 @@ void ManualBlendView::suggestionClicked(Thumbnail * t)
 
 void ManualBlendView::cloudReceived(QPair< QVector<Eigen::Vector3f>, QVector<Eigen::Vector3f> > cloud)
 {
-	cloudPoints.clear();
-	cloudNormals.clear();
+    cloudPoints.clear();
+    cloudNormals.clear();
+
+    auto source = document->getModel(document->firstModelName());
+    auto n = source->activeNode;
+
+    // Check if blending is canceld
+    if(cloud.first.empty()){
+        n->vis_property["isHidden"].setValue(false);
+
+        // remaining elements of a group
+        for(auto nj : source->nodes){
+            if(nj == n || !source->shareGroup(nj->id, n->id)) continue;
+            nj->vis_property["isHidden"].setValue(false);
+        }
+        return;
+    }
 
 	for (auto p : cloud.first) cloudPoints << QVector3D(p[0],p[1],p[2]);
 	for (auto p : cloud.second) cloudNormals << QVector3D(p[0], p[1], p[2]);
 
-	auto n = document->getModel(document->firstModelName())->activeNode;
 	n->vis_property["isHidden"].setValue(true);
 	cloudColor = n->vis_property["color"].value<QColor>();
+
+    // remaining elements of a group
+    for(auto nj : source->nodes){
+        if(nj == n || !source->shareGroup(nj->id, n->id)) continue;
+        nj->vis_property["isHidden"].setValue(true);
+    }
 }

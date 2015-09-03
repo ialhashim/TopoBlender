@@ -6,8 +6,8 @@
 #include <QGraphicsSceneWheelEvent>
 #include <QGraphicsDropShadowEffect>
 
-Gallery::Gallery(QGraphicsItem *parent, QRectF rect, int numColumns, QRectF defaultItemRect, bool isFixedSize) : QGraphicsObject(parent),
-rect(rect), numColumns(numColumns), defaultItemRect(defaultItemRect)
+Gallery::Gallery(QGraphicsItem *parent, QRectF rect, QRectF defaultItemRect, bool isFixedSize) : QGraphicsObject(parent),
+rect(rect), defaultItemRect(defaultItemRect), scrollbar(nullptr)
 {
     setFlag( QGraphicsItem::ItemClipsChildrenToShape );
 
@@ -114,7 +114,10 @@ QVector<Thumbnail *> Gallery::getSelected()
 
 void Gallery::wheelEvent(QGraphicsSceneWheelEvent * event)
 {
-    double step = (double)event->delta() / 120;
-    double delta = step * 5;
-    scrollbar->setValue(scrollbar->value() - delta);
+    if(scrollbar)
+    {
+        double step = (double)event->delta() / 120;
+        double delta = step * 5;
+        scrollbar->setValue(scrollbar->value() - delta);
+    }
 }

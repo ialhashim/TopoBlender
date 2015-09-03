@@ -65,11 +65,11 @@ void AutoBlend::init()
     }
 
     // Create gallery of shapes
-    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 180), 4);
+    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 180));
 
     // Create container that holds results
     results = new Gallery(this, QRectF(0,0, this->bounds.width(),
-                          bounds.height() - gallery->boundingRect().height()), 2,
+                          bounds.height() - gallery->boundingRect().height()),
                           QRectF(0,0,256,256), true);
 
     results->moveBy(0, gallery->boundingRect().height());
@@ -160,61 +160,86 @@ void AutoBlend::doBlend()
 	auto selected = gallery->getSelected();
 	if (selected.size() < 2) return;
 
-	auto sourceName = selected.front()->data["targetName"].toString();
-	auto targetName = selected.back()->data["targetName"].toString();
+    for(auto t : results->items) t->deleteLater();
+    results->items.clear();
 
-	auto source = document->cacheModel(sourceName);
-	auto target = document->cacheModel(targetName);
+    ((GraphicsScene*)scene())->showPopup("Please wait..");
 
-	// Apply computed correspondence
-	auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source, target));
+    for(int shapeI = 0; shapeI < selected.size(); shapeI++)
+    {
+        for(int shapeJ = shapeI + 1; shapeJ < selected.size(); shapeJ++)
+        {
+            //auto sourceName = selected.front()->data["targetName"].toString();
+            //auto targetName = selected.back()->data["targetName"].toString();
 
-	for (auto n : source->nodes)
-	{
-		QString sid = n->id;
+            auto sourceName = selected[shapeI]->data.value("targetName").toString();
+            auto targetName = selected[shapeJ]->data.value("targetName").toString();
 
-		if (document->datasetCorr[sourceName][sid][targetName].empty())
-		{
-			gcorr->setNonCorresSource(sid);
-		}
-		else
-		{
-			auto tid = document->datasetCorr[sourceName][sid][targetName].front();
-			gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
-		}
-	}
+            auto source = QSharedPointer<Structure::Graph>(document->cacheModel(sourceName)->cloneAsShapeGraph());
+            auto target = QSharedPointer<Structure::Graph>(document->cacheModel(targetName)->cloneAsShapeGraph());
 
-	gcorr->computeCorrespondences();
+            // Apply computed correspondence
+            auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));
 
-	// Schedule blending sequence
-	auto scheduler = QSharedPointer<Scheduler>(new Scheduler);
-	auto blender = QSharedPointer<TopoBlender>(new TopoBlender(gcorr.data(), scheduler.data()));
+            for (auto n : source->nodes)
+            {
+                QString sid = n->id;
 
-	// Sample geometries
-	int numSamples = 100;
-	auto synthManager = QSharedPointer<SynthesisManager>(new SynthesisManager(gcorr.data(), scheduler.data(), blender.data(), numSamples));
-	synthManager->genSynData();
+                if (document->datasetCorr[sourceName][sid][targetName].empty())
+                {
+                    gcorr->setNonCorresSource(sid);
+                }
+                else
+                {
+                    auto tid = document->datasetCorr[sourceName][sid][targetName].front();
+                    gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
+                }
+            }
 
-	// Compute blending
-	scheduler->timeStep = 1.0 / 50.0;
-	scheduler->defaultSchedule();
-	scheduler->executeAll(); 
+            gcorr->computeCorrespondences();
 
-	int numResults = 5;
+            // Schedule blending sequence
+            auto scheduler = QSharedPointer<Scheduler>(new Scheduler);
+            auto blender = QSharedPointer<TopoBlender>(new TopoBlender(gcorr.data(), scheduler.data()));
 
-	for (int i = 1; i < numResults - 1; i++)
-	{
-		double a = double(i) / (numResults - 1);
-		auto blendedModel = scheduler->allGraphs[a * (scheduler->allGraphs.size() - 1)];
+            // Sample geometries
+            int numSamples = 100;
+            int reconLevel = 4;
 
-		synthManager->renderGraph(*blendedModel, "", false, 4 );
+            int LOD = widget->levelDetails->currentIndex();
+            switch (LOD){
+                case 0: numSamples = 100; reconLevel = 4; break;
+                case 1: numSamples = 1000; reconLevel = 5; break;
+                case 3: numSamples = 10000; reconLevel = 7; break;
+            }
 
-		auto t = results->addTextItem("");
-		t->setCamera(cameraPos, cameraMatrix);
+            auto synthManager = QSharedPointer<SynthesisManager>(new SynthesisManager(gcorr.data(), scheduler.data(), blender.data(), numSamples));
+            synthManager->genSynData();
 
-		// Add parts of target shape
-		for (auto n : blendedModel->nodes){
-			t->addAuxMesh(toBasicMesh(blendedModel->getMesh(n->id), n->vis_property["color"].value<QColor>()));
-		}
-	}
+            // Compute blending
+            scheduler->timeStep = 1.0 / 100.0;
+            scheduler->defaultSchedule();
+            scheduler->executeAll();
+
+            int numResults = widget->count->value();
+
+            for (int i = 0; i < numResults; i++)
+            {
+                double a = ((double(i) / (numResults - 1)) * 0.6) + 0.2;
+                auto blendedModel = scheduler->allGraphs[a * (scheduler->allGraphs.size() - 1)];
+
+                synthManager->renderGraph(*blendedModel, "", false, reconLevel );
+
+                auto t = results->addTextItem("");
+                t->setCamera(cameraPos, cameraMatrix);
+
+                // Add parts of target shape
+                for (auto n : blendedModel->nodes){
+                    t->addAuxMesh(toBasicMesh(blendedModel->getMesh(n->id), n->vis_property["color"].value<QColor>()));
+                }
+            }
+        }
+    }
+
+    ((GraphicsScene*)scene())->hidePopup();
 }

@@ -53,21 +53,33 @@ void Explore::init()
         });
 
         connect(document, &Document::categoryPairwiseDone, [=](){
+            // Clean up earlier results
+            for(auto i : this->childItems()) if(i != widgetProxy) scene()->removeItem(i);
+
             auto catModels = document->categories[ document->currentCategory ].toStringList();
 
             smat::Matrix<double> D(catModels.size(), catModels.size(), 0);
 
-            for(auto s : document->datasetMatching.keys())
-            {
-                for(auto t : document->datasetMatching[s].keys())
-                {
-                    int i = catModels.indexOf(s);
-                    int j = catModels.indexOf(t);
+            // Range
+            double min_val = 1.0, max_val = 0.0;
 
-                    double dist = document->datasetMatching[s][t]["min_cost"].toDouble();
+            for(int i = 0; i < catModels.size(); i++)
+            {
+                for(int j = i+1; j < catModels.size(); j++)
+                {
+                    auto s = catModels[i], t = catModels[j];
+
+                    double dist = std::max(document->datasetMatching[s][t]["min_cost"].toDouble(),
+                                           document->datasetMatching[t][s]["min_cost"].toDouble());
 
                     D.set(i,j,dist);
                     D.set(j,i,dist);
+
+                    // Non-zero
+                    if(dist != 0){
+                        min_val = std::min(min_val, dist);
+                        max_val = std::max(max_val, dist);
+                    }
                 }
             }
 
@@ -116,14 +128,16 @@ void Explore::init()
             };
 
             // MDS
-            auto X = QSharedPointer< smat::Matrix<double> >(smat::MDS_SMACOF(&D, NULL, 2, 100));
+            QSharedPointer< smat::Matrix<double> > X;
+
+            if(widget->vizOption->currentIndex() == 0) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_SMACOF(&D, NULL, 2, 30));
+            if(widget->vizOption->currentIndex() == 1) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_UCF(&D, NULL, 2, 30));
 
             /// Plot:
-
-            // Compute range:
+            // Compute spatial range:
             QPolygonF allPoints;
-            for(auto s : document->datasetMatching.keys()){
-                int i = catModels.indexOf(s);
+            for(int i = 0; i < catModels.size(); i++)
+            {
                 allPoints << QPointF(X->get(i,0), X->get(i,1));
             }
             auto allPointsRect = allPoints.boundingRect();
@@ -135,9 +149,12 @@ void Explore::init()
 
             QRectF thumbRect(0,0,92,92);
 
-            for(auto s : document->datasetMatching.keys())
+            QMap<QString, Thumbnail*> thumbs;
+
+            for(int i = 0; i < catModels.size(); i++)
             {
-                int i = catModels.indexOf(s);
+                auto s = catModels[i];
+
                 auto posRelative = QPointF((X->get(i,0) - allPointsRect.left())/allPointsRect.width(),
                                             (X->get(i,1) - allPointsRect.top())/allPointsRect.height());
                 auto pos = QPointF((posRelative.x() * r.width()) + (dx/2.0), (posRelative.y() * r.height()) + (dy/2.0));
@@ -155,6 +172,67 @@ void Explore::init()
                 }
 
                 t->setPos(pos - thumbRect.center());
+
+                thumbs[s] = t;
+            }
+
+            /*
+               Return a RGB color value given a scalar v in the range [vmin,vmax]
+               In this case each color component ranges from 0 (no contribution) to
+               1 (fully saturated), modifications for other ranges is trivial.
+               The color is clipped at the end of the scales if v is outside
+               the range [vmin,vmax] - from StackOverflow/7706339
+            */
+            auto qtJetColor = [&](double v, double vmin,double vmax){
+                double dv;
+                if (v < vmin) v = vmin;
+                if (v > vmax) v = vmax;
+                dv = vmax - vmin;
+                double r = 1, g = 1, b = 1;
+                if (v < (vmin + 0.25 * dv)) {
+                    r = 0;
+                    g = 4 * (v - vmin) / dv;
+                } else if (v < (vmin + 0.5 * dv)) {
+                    r = 0;
+                    b = 1 + 4 * (vmin + 0.25 * dv - v) / dv;
+                } else if (v < (vmin + 0.75 * dv)) {
+                    r = 4 * (v - vmin - 0.5 * dv) / dv;
+                    b = 0;
+                } else {
+                    g = 1 + 4 * (vmin + 0.75 * dv - v) / dv;
+                    b = 0;
+                }
+                return QColor::fromRgbF(qMax(0.0, qMin(r,1.0)), qMax(0.0, qMin(g,1.0)), qMax(0.0, qMin(b,1.0)));
+            };
+
+            for(int i = 0; i < catModels.size(); i++)
+            {
+                for(int j = i+1; j < catModels.size(); j++)
+                {
+                    auto s = catModels[i], t = catModels[j];
+
+                    auto t1 = thumbs[s], t2 = thumbs[t];
+
+                    QLineF linef(this->mapFromItem(t1, t1->boundingRect().center()),
+                                 this->mapFromItem(t2, t2->boundingRect().center()));
+
+                    double d = 1.0 - ((D.get(i,j) - min_val) / (max_val - min_val));
+                    d = pow(d, 2);
+
+                    if(d >= 0.5)
+                    {
+                        d = (d - 0.5) / 0.5;
+
+                        QColor color = qtJetColor(d, 0, 1);
+                        color.setAlphaF(d);
+
+                        auto line = scene()->addLine(linef, QPen(color, d * 4));
+
+                        line->setParentItem(this);
+                        line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
+                        line->setZValue(-1);
+                    }
+                }
             }
         });
     }

@@ -90,6 +90,10 @@ win32{
     # Use native OpenGL drivers with Qt5.5
     # No longer implicit since the ANGLE driver is now an alternative
     LIBS += -lopengl32 -lglu32
+
+    # Enable debuging in release mode
+    QMAKE_CXXFLAGS_RELEASE += /Zi
+    QMAKE_LFLAGS_RELEASE += /DEBUG
 }
 
 linux-g++{ LIBS += -lGLU }

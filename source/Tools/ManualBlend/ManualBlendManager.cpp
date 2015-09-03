@@ -19,6 +19,15 @@ ManualBlendManager::ManualBlendManager(Document *document) : document(document),
 
 void ManualBlendManager::doBlend(QString source_part_name, QString target_name, QString target_part_name, int value)
 {
+    int numSamples = 2500;
+
+    // Reconstruction Options
+    switch(property("reconResolution").toInt()){
+    case 0: numSamples = 2500; break;
+    case 1: numSamples = 8000; break;
+    case 2: numSamples = 20000; break;
+    }
+
 	if (sourcePartName != source_part_name || targetName != target_name || targetPartName != target_part_name)
 	{
 		this->sourcePartName = source_part_name;
@@ -38,7 +47,7 @@ void ManualBlendManager::doBlend(QString source_part_name, QString target_name, 
 		{
 			QString sid = n->id;
 
-			if (sid == sourcePartName)
+            if (sid == sourcePartName)
 			{
 				gcorr->addLandmarks(QVector<QString>() << sourcePartName, QVector<QString>() << targetPartName);
 			}
@@ -99,6 +108,21 @@ void ManualBlendManager::doBlend(QString source_part_name, QString target_name, 
 		double t = double(value) / 100.0;
 		auto t_graph = scheduler->allGraphs[t * (scheduler->allGraphs.size() - 1)];
 		auto cloud = synthManager->reconstructGeometryNode(t_graph->getNode(sourcePartName), t);
+
+        // Blend the remaining elements of a group
+        auto source = document->getModel(document->firstModelName());
+
+        for(auto n : source->nodes){
+            if(n->id == sourcePartName) continue;
+            if(source->shareGroup(n->id, sourcePartName)){
+                auto tnode = t_graph->getNode(n->id);
+                if(tnode == nullptr) continue;
+
+                auto c = synthManager->reconstructGeometryNode(tnode, t);
+                cloud.first += c.first;
+                cloud.second += c.second;
+            }
+        }
 		
 		emit(cloudReady(cloud));
 
@@ -108,9 +132,67 @@ void ManualBlendManager::doBlend(QString source_part_name, QString target_name, 
 
 void ManualBlendManager::finalizeBlend(QString source_part_name, QString target_name, QString target_part_name, int value)
 {
-	double t = double(value) / 100.0;
-	auto t_graph = scheduler->allGraphs[t * (scheduler->allGraphs.size() - 1)];
-	auto t_node = t_graph->getNode(source_part_name);
+    double t = double(value) / 100.0;
+    auto t_graph = scheduler->allGraphs[t * (scheduler->allGraphs.size() - 1)];
+    auto t_node = t_graph->getNode(source_part_name);
+
+    auto model = document->getModel(document->firstModelName());
+    auto n = model->getNode(source_part_name);
+
+    if(t == 0.0){
+        SynthesisManager::OrientedCloud emptyCloud;
+        emit(cloudReady(emptyCloud));
+        return;
+    }
+
+    if(t == 1.0){
+        // Copy node and mesh geometry exactly from target
+		QString tgnid = t_node->property["correspond"].toString();
+        t_node = scheduler->targetGraph->getNode(tgnid);
+
+        auto newNode = model->replaceNode(n->id, t_node->clone(), true);
+		auto nodeMesh = scheduler->targetGraph->getMesh(t_node->id)->clone();
+        nodeMesh->update_face_normals();
+        nodeMesh->update_vertex_normals();
+        nodeMesh->updateBoundingBox();
+        newNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(nodeMesh));
+        model->activeNode = newNode;
+
+        // Blend the remaining elements of a group
+        auto source = model;
+        for(auto nj : source->nodes){
+            if(nj->id == sourcePartName) continue;
+            if(source->shareGroup(nj->id, sourcePartName)){
+                t_node = t_graph->getNode(nj->id);
+                if(t_node == nullptr) continue;
+
+                // Copy node and mesh geometry exactly from target
+                QString tgnid = t_node->property["correspond"].toString();
+                t_node = scheduler->targetGraph->getNode(tgnid);
+
+                auto newNode = model->replaceNode(nj->id, t_node->clone(), true);
+                auto nodeMesh = scheduler->targetGraph->getMesh(t_node->id)->clone();
+                nodeMesh->update_face_normals();
+                nodeMesh->update_vertex_normals();
+                nodeMesh->updateBoundingBox();
+                newNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(nodeMesh));
+            }
+        }
+
+        SynthesisManager::OrientedCloud emptyCloud;
+        emit(cloudReady(emptyCloud));
+
+        return;
+    }
+
+    int reconLevel = 6;
+
+    // Reconstruction Options
+    switch(property("reconResolution").toInt()){
+    case 0: reconLevel = 6; break;
+    case 1: reconLevel = 7; break;
+    case 2: reconLevel = 8; break;
+    }
 
 	// Get point cloud
 	auto cloud = synthManager->reconstructGeometryNode(t_node, t);
@@ -129,7 +211,7 @@ void ManualBlendManager::finalizeBlend(QString source_part_name, QString target_
 		normal.push_back(n.x()); normal.push_back(n.y()); normal.push_back(n.z());
 		finalN.push_back(normal);
 	}
-	PoissonRecon::makeFromCloud(finalP, finalN, mesh, 6);
+    PoissonRecon::makeFromCloud(finalP, finalN, mesh, reconLevel);
 
 	// Copy results
 	auto nodeMesh = QSharedPointer<SurfaceMeshModel>(new SurfaceMeshModel(source_part_name));
@@ -152,11 +234,8 @@ void ManualBlendManager::finalizeBlend(QString source_part_name, QString target_
 	nodeMesh->update_vertex_normals();
 	nodeMesh->updateBoundingBox();
 
-	// Replace the node
-	auto model = document->getModel(document->firstModelName());
-	auto n = model->getNode(source_part_name);
-
-	model->removeNode(n->id);
-	auto newNode = model->addNode(t_node->clone());
-	newNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(nodeMesh));
+    // Replace the node
+    auto newNode = model->replaceNode(n->id, t_node->clone(), true);
+    newNode->property["mesh"].setValue(QSharedPointer<SurfaceMeshModel>(nodeMesh));
+    model->activeNode = newNode;
 }

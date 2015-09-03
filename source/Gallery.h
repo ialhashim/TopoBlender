@@ -10,8 +10,7 @@ class Gallery : public QGraphicsObject
     Q_PROPERTY(QRectF rect READ boundingRect WRITE setRect)
 
 public:
-	Gallery(QGraphicsItem *parent, QRectF rect = QRectF(0, 0, 512, 300), 
-        int numColumns = 4, QRectF defaultItemRect = QRectF(0, 0, 128, 128), bool isFixedSize = false);
+    Gallery(QGraphicsItem *parent, QRectF rect = QRectF(0, 0, 512, 300), QRectF defaultItemRect = QRectF(0, 0, 128, 128), bool isFixedSize = false);
 
 	QRectF rect;
     QRectF boundingRect() const { return rect; }
@@ -20,7 +19,6 @@ public:
     void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = 0);
 
     QRectF defaultItemRect;
-    int numColumns;
 
 	Thumbnail * addImageItem(QImage image, QVariantMap data = QVariantMap());
 	Thumbnail * addTextItem(QString text, QVariantMap data = QVariantMap());
@@ -31,9 +29,10 @@ public:
     void clearThumbnails();
     QVector<Thumbnail *> getSelected();
 
-protected:
+//protected:
     QVector<Thumbnail*> items;
     QScrollBar * scrollbar;
 
+protected:
     void wheelEvent(QGraphicsSceneWheelEvent *);
 };

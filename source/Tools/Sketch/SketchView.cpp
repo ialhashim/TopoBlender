@@ -538,6 +538,10 @@ void SketchView::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 
     if(event->button() == Qt::LeftButton)
     {
+        document->setModelProperty(document->firstModelName(), "meshingIsFlat", property("meshingIsFlat").toBool());
+        document->setModelProperty(document->firstModelName(), "meshingIsSquare", property("meshingIsSquare").toBool());
+        document->setModelProperty(document->firstModelName(), "meshingIsThick", property("meshingIsThick").toInt());
+
         if(sketchOp == SKETCH_CURVE)
         {
             document->createCurveFromPoints(document->firstModelName(), sketchPoints);

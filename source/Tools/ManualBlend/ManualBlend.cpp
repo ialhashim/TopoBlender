@@ -60,6 +60,10 @@ void ManualBlend::init()
         connect(widget->analyzeButton, &QPushButton::pressed, [&](){
             document->analyze( widget->categoriesBox->currentText() );
         });
+
+        connect(widget->reconResolution, static_cast<void (QComboBox::*)(int index)>(&QComboBox::currentIndexChanged), [&](int level){
+            blendManager->setProperty("reconResolution", level);
+        });
     }
 
     resizeViews();

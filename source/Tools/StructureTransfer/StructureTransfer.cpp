@@ -45,7 +45,7 @@ void StructureTransfer::init()
     widgetProxy->moveBy(-delta.x(), -delta.y());
 
     // Create gallery of shapes
-    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 180), 4);
+    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 140));
 
     auto dropShadow = new QGraphicsDropShadowEffect();
     dropShadow->setOffset(0, 5);

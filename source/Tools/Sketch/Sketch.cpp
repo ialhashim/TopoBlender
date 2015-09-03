@@ -66,6 +66,17 @@ void Sketch::init()
             connect(toolsWidget->sheetButton, &QPushButton::pressed, [&](){
 				for (auto & v : views) v->setSketchOp(SKETCH_SHEET);
             });
+
+            // Sketching options
+            connect(toolsWidget->isFlat, &QCheckBox::toggled, [&](bool checked){
+                for(auto & v : views) v->setProperty("meshingIsFlat", checked);
+            });
+            connect(toolsWidget->isSquare, &QCheckBox::toggled, [&](bool checked){
+                for(auto & v : views) v->setProperty("meshingIsSquare", checked);
+            });
+            connect(toolsWidget->isThick, static_cast<void (QComboBox::*)(int index)>(&QComboBox::currentIndexChanged), [&](int level){
+                for(auto & v : views) v->setProperty("meshingIsThick", QVariant::fromValue(level));
+            });
         }
 
         // Modify

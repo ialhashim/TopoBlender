@@ -19,6 +19,12 @@ void ModelMesher::generateOffsetSurface(double offset)
     auto n = m->activeNode;
     n->vis_property["isSmoothShading"].setValue(true);
 
+    switch(m->QObject::property("meshingIsThick").toInt()){
+    case 0: break;
+    case 1: offset *= 1.5; break;
+    case 2: offset *= 2; break;
+    }
+
     double dx = 0.015;
 
     std::vector<SDFGen::Vec3f> vertList;
@@ -150,12 +156,31 @@ void ModelMesher::generateRegularSurface(double offset)
     Structure::Curve* curve = dynamic_cast<Structure::Curve*>(n);
     Structure::Sheet* sheet = dynamic_cast<Structure::Sheet*>(n);
 
+    auto addTriangle = [&](SurfaceMeshModel * newMesh, Vector3 a, Vector3 b, Vector3 c){
+        typedef SurfaceMeshModel::Vertex Vert;
+        int v = newMesh->n_vertices();
+        newMesh->add_vertex(a);
+        newMesh->add_vertex(b);
+        newMesh->add_vertex(c);
+        newMesh->add_triangle(Vert(v + 0), Vert(v + 1), Vert(v + 2));
+    };
+
 	QSharedPointer<SurfaceMeshModel> newMesh = QSharedPointer<SurfaceMeshModel>(new SurfaceMeshModel());
+
+    // Options
+    bool isFlat = m->QObject::property("meshingIsFlat").toBool();
+    bool isSquare = m->QObject::property("meshingIsSquare").toBool();
+    switch(m->QObject::property("meshingIsThick").toInt()){
+    case 0: break;
+    case 1: offset *= 2; break;
+    case 2: offset *= 8; break;
+    }
+    if(isFlat) n->vis_property["isSmoothShading"].setValue(false);
 
     if(curve)
     {
         int numSegments = 20;
-        int radialSegments = 12;
+        int radialSegments = isSquare ? 4 : 20;
 
 		std::vector< std::vector<Vector3> > grid;
 
@@ -180,9 +205,13 @@ void ModelMesher::generateRegularSurface(double offset)
 				for (double phi = M_PI * 0.5; phi >= d; phi -= d){
 					grid.push_back(std::vector<Vector3>());
 					for (double theta = 0; theta < M_PI * 2; theta += d){
-						auto q1 = Eigen::AngleAxisd(theta + M_PI, -tangent);
-						auto q2 = Eigen::AngleAxisd(phi, binormal);
-						grid.back().push_back( (q1 * (q2 * normal)) * r + point );
+                        Eigen::AngleAxisd q1(theta + M_PI, -tangent);
+                        Eigen::AngleAxisd q2(phi, binormal);
+
+                        if(isFlat)
+                            grid.back().push_back((q1 * normal * cos(phi)) * r + point);
+                        else
+                            grid.back().push_back((q1 * (q2 * normal)) * r + point);
 					}
 				}
 			}
@@ -207,9 +236,13 @@ void ModelMesher::generateRegularSurface(double offset)
 				for (double phi = d; phi <= M_PI * 0.5; phi += d){
 					grid.push_back(std::vector<Vector3>());
 					for (double theta = 0; theta < M_PI * 2; theta += d){
-						auto q1 = Eigen::AngleAxisd(theta + M_PI, -tangent);
-						auto q2 = Eigen::AngleAxisd(phi, -binormal);
-						grid.back().push_back((q1 * (q2 * normal)) * r + point);
+                        Eigen::AngleAxisd q1(theta + M_PI, -tangent);
+                        Eigen::AngleAxisd q2(phi, -binormal);
+
+                        if(isFlat)
+                            grid.back().push_back((q1 * normal * cos(phi)) * r + point);
+                        else
+                            grid.back().push_back((q1 * (q2 * normal)) * r + point);
 					}
 				}
 			}
@@ -228,28 +261,58 @@ void ModelMesher::generateRegularSurface(double offset)
 				auto c = grid[ip][jp];
 				auto d = grid[i][jp];
 
-				auto addTriangle = [&](Vector3 a, Vector3 b, Vector3 c){
-					typedef SurfaceMeshModel::Vertex Vert;
-					int v = newMesh->n_vertices();
-					newMesh->add_vertex(a);
-					newMesh->add_vertex(b);
-					newMesh->add_vertex(c);
-					newMesh->add_triangle(Vert(v + 0), Vert(v + 1), Vert(v + 2));
-				};
-
-				if (i != 0) addTriangle(a, b, d);
-				if (i != grid.size() - 2) addTriangle(b, c, d);
+                if (i != 0) addTriangle(newMesh.data(), a, b, d);
+                if (i != grid.size() - 2) addTriangle(newMesh.data(), b, c, d);
 			}
 		}
     }
 
     if(sheet)
     {
-		generateOffsetSurface(offset);
-		return;
+        if(isFlat)
+        {
+            Eigen::Vector4d c0(0,0,0,0), c1(1,1,0,0);
+            Vector3 pos(0,0,0);
+            std::vector<Vector3> frame(3,Vector3::Zero());
+
+            // First corner
+            sheet->get(c0,pos,frame);
+            Vector3 corner0 = pos - (offset * (frame[0] + frame[1] + frame[2]));
+
+            // Second corner
+            sheet->get(c1,pos,frame);
+            Vector3 corner1 = pos + (offset * (frame[0] + frame[1] + frame[2]));
+
+            Eigen::AlignedBox3d bbox(corner0, corner1);
+
+            QVector<Vector3> corn;
+            for(int i = 0; i < 8 ; i++){
+                corn << bbox.corner(Eigen::AlignedBox3d::CornerType(Eigen::AlignedBox3d::CornerType::BottomLeftFloor + i));
+            }
+
+            addTriangle(newMesh.data(), corn[0], corn[1], corn[2]);
+            addTriangle(newMesh.data(), corn[1], corn[3], corn[2]);
+            addTriangle(newMesh.data(), corn[6], corn[5], corn[4]);
+            addTriangle(newMesh.data(), corn[6], corn[7], corn[5]);
+
+            addTriangle(newMesh.data(), corn[1], corn[0], corn[4]);
+            addTriangle(newMesh.data(), corn[1], corn[4], corn[5]);
+            addTriangle(newMesh.data(), corn[2], corn[3], corn[7]);
+            addTriangle(newMesh.data(), corn[2], corn[7], corn[6]);
+
+            addTriangle(newMesh.data(), corn[3], corn[1], corn[5]);
+            addTriangle(newMesh.data(), corn[3], corn[5], corn[7]);
+            addTriangle(newMesh.data(), corn[0], corn[2], corn[4]);
+            addTriangle(newMesh.data(), corn[4], corn[2], corn[6]);
+        }
+        else
+        {
+            generateOffsetSurface(offset);
+            return;
+        }
     }
 
-	GeometryHelper::meregeVertices<Vector3>(newMesh.data());
+    GeometryHelper::meregeVertices<Vector3>(newMesh.data());
 
 	newMesh->updateBoundingBox();
 	newMesh->update_face_normals();

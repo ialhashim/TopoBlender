@@ -54,6 +54,7 @@ public:
 
     // Modify models:
     void modifyActiveNode(QString modelName, QVector<QVector3D> &guidePoints);
+    void setModelProperty(QString modelName, QString propertyName, QVariant propertyValue);
     void generateSurface(QString modelName, double offset);
     void placeOnGround(QString modelName);
     void selectPart(QString modelName, QVector3D rayOrigin, QVector3D rayDirection);

@@ -29,7 +29,7 @@ void DocumentAnalyzeWorker::processAllPairWise()
         return;
     }
 
-    int k = 2; // search parameter
+    int k = 4; // search parameter
 
     int numPairwise = ((catModels.size()-1) * catModels.size()) / 2.0;
     int c = 0;
@@ -54,6 +54,7 @@ void DocumentAnalyzeWorker::processAllPairWise()
             options["k"].setValue( k );
             options["isQuietMode"].setValue(true);
             options["isManyTypesJobs"].setValue(true);
+            options["isAllowCutsJoins"].setValue(true);
 
             int numJobs = 0;
 

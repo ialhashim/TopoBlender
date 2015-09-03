@@ -573,7 +573,7 @@ void Model::draw(Viewer *glwidget)
 
         QVector<QVector3D> lines;
         auto addLine = [&](Eigen::Vector3d a, Eigen::Vector3d b){
-            Vector3 dir = (a - b).normalized() * 0.05;
+            Vector3 dir = (a - b).normalized() * 0.025;
             lines << toQVector3D(a);
             lines << toQVector3D(a - dir);
             lines << toQVector3D(b);
@@ -593,8 +593,9 @@ void Model::draw(Viewer *glwidget)
         addLine(corners[5], corners[7]);
         addLine(corners[6], corners[7]);
 
-        QColor color(255,255,255,100);
+        QColor color(255,255,255,150);
 
+        glwidget->glLineWidth(2);
         glwidget->drawLines(lines, color, glwidget->pvm, "lines");
     }
 

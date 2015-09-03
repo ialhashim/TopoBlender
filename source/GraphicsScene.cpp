@@ -4,8 +4,9 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
+#include <QApplication>
 
-GraphicsScene::GraphicsScene() : isGradientBackground(false)
+GraphicsScene::GraphicsScene() : isGradientBackground(false), popup(nullptr)
 {
     /// Background:
     // Colors
@@ -86,5 +87,52 @@ void GraphicsScene::displayMessage(QString message, int time)
         removeItem(rectItem);
         update();
     });
+}
+
+void GraphicsScene::showPopup(QString message)
+{
+    hidePopup();
+
+    popup = addText(message, QFont("SansSerif", 24));
+    auto textItem = popup;
+    textItem->setDefaultTextColor(Qt::white);
+
+    QGraphicsDropShadowEffect * shadow = new QGraphicsDropShadowEffect();
+    shadow->setColor(QColor(0,0,0,128));
+    shadow->setOffset(3);
+    shadow->setBlurRadius(4);
+    textItem->setGraphicsEffect(shadow);
+    auto textRect = textItem->sceneBoundingRect();
+    textItem->moveBy(this->views().front()->width() * 0.5 - textRect.width() * 0.5,
+                     this->views().front()->height() * 0.5 - textRect.height() * 0.5);
+    textRect = textItem->sceneBoundingRect();
+    textRect.moveTopLeft(QPointF(0,0));
+    textRect.adjust(-20,-20,20,20);
+
+    QPainterPath textRectPath;
+    textRectPath.addRoundedRect(textRect, 15, 15);
+    auto rectItem = addPath(textRectPath, QPen(Qt::transparent), QBrush(QColor(0,0,0,200)));
+
+    textItem->setZValue(500);
+    rectItem->setZValue(499);
+
+    rectItem->setParentItem(textItem);
+    rectItem->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
+    rectItem->setZValue(-1);
+
+    auto tr = textItem->sceneBoundingRect();
+    auto delta = textRect.center() - QRectF(0,0,tr.width(),tr.height()).center();
+    rectItem->moveBy(delta.x(), delta.y());
+
+    update();
+    QApplication::processEvents();
+}
+
+void GraphicsScene::hidePopup()
+{
+    if(popup) {this->removeItem(popup); popup = nullptr;}
+
+    update();
+    QApplication::processEvents();
 }
 

@@ -222,6 +222,7 @@ void Document::loadPairwise(QString filename)
         auto item = line.split(QRegExp("[ \t]"), QString::SkipEmptyParts);
         if (item.size() != 3) continue;
         datasetMatching[item[0]][item[1]]["min_cost"] = item[2].toDouble();
+        datasetMatching[item[1]][item[0]]["min_cost"] = item[2].toDouble();
     }
 }
 
@@ -291,6 +292,12 @@ void Document::modifyActiveNode(QString modelName, QVector<QVector3D> &guidePoin
 {
     auto m = getModel(modelName);
     if(m != nullptr) m->modifyLastAdded(guidePoints);
+}
+
+void Document::setModelProperty(QString modelName, QString propertyName, QVariant propertyValue)
+{
+    auto m = getModel(modelName);
+    if(m != nullptr) m->setProperty(propertyName.toLatin1(), propertyValue);
 }
 
 void Document::generateSurface(QString modelName, double offset)

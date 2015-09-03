@@ -140,14 +140,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         // Connect buttons with tools behavior
         {
             connect(modifiers->ui->loadButton, &QPushButton::pressed, [&](){
-                QSettings settings;
+                document->clearModels();
                 QString filename = QFileDialog::getOpenFileName(0, "Load shape", "", "Shape graph (*.xml)");
-                if(filename.size()){
-                    document->clearModels();
-                    settings.setValue("defaultShape", filename);
-                    settings.sync();
-                }
-                document->loadModel(settings.value("defaultShape").toString());
+                if(filename.trimmed().size())
+                    document->loadModel(filename);
+                else
+                    document->createModel("untitled");
             });
 
             connect(modifiers->ui->sketchButton, &QPushButton::pressed, [&](){

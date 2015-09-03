@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>122</width>
-    <height>186</height>
+    <width>117</width>
+    <height>185</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,7 +51,7 @@ QPushButton:checked{ background:rgb(255,153,0); border-color:#FFFFFF; top:2px; }
    <item row="0" column="0">
     <widget class="QComboBox" name="categoriesBox"/>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -63,6 +63,23 @@ QPushButton:checked{ background:rgb(255,153,0); border-color:#FFFFFF; top:2px; }
       </size>
      </property>
     </spacer>
+   </item>
+   <item row="2" column="0">
+    <widget class="QComboBox" name="vizOption">
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <item>
+      <property name="text">
+       <string>Option A</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Option B</string>
+      </property>
+     </item>
+    </widget>
    </item>
   </layout>
  </widget>
