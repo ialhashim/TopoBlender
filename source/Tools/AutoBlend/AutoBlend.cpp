@@ -100,13 +100,16 @@ void AutoBlend::init()
 			auto frame = camera->frame();
 			frame.position = Eigen::Vector3f(-1, 0, 0.5);
 			camera->setTarget(Eigen::Vector3f(0, 0, 0.5));
-			camera->setFrame(frame);
+            camera->setFrame(frame);
 
-			double theta1 = acos(-1) * 0.75;
-			double theta2 = acos(-1) * 0.10;
-			camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
-			camera->zoom(-4);
-			camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
+            int deltaZoom = document->extent().length() * 1.0;
+
+            // Default view angle
+            double theta1 = acos(-1) * 0.75;
+            double theta2 = acos(-1) * 0.10;
+            camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
+            camera->zoom(-(4+deltaZoom));
+            camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
 			auto cp = camera->position();
 			cameraPos = QVector3D(cp[0], cp[1], cp[2]);
 
@@ -175,8 +178,13 @@ void AutoBlend::doBlend()
             auto sourceName = selected[shapeI]->data.value("targetName").toString();
             auto targetName = selected[shapeJ]->data.value("targetName").toString();
 
-            auto source = QSharedPointer<Structure::Graph>(document->cacheModel(sourceName)->cloneAsShapeGraph());
-            auto target = QSharedPointer<Structure::Graph>(document->cacheModel(targetName)->cloneAsShapeGraph());
+            auto cacheSource = document->cacheModel(sourceName);
+            auto cacheTarget = document->cacheModel(targetName);
+
+            if(cacheSource == nullptr || cacheTarget == nullptr) continue;
+
+            auto source = QSharedPointer<Structure::Graph>(cacheSource->cloneAsShapeGraph());
+            auto target = QSharedPointer<Structure::Graph>(cacheTarget->cloneAsShapeGraph());
 
             // Apply computed correspondence
             auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));

@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->graphicsView->setScene(scene);
 
     // Add tools window
-    auto modifiers = new ModifiersPanel();
+    modifiers = new ModifiersPanel();
     auto modifiersWidget = scene->addWidget(modifiers);
     modifiersWidget->setObjectName("modifiersWidget");
 
@@ -58,6 +58,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     auto datasetPath = settings.value("dataset/path", "dataset").toString();
     QDir datasetDir(datasetPath);
 	if (!datasetDir.exists() || QGuiApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier)){
+        QApplication::processEvents();
         datasetPath = QFileDialog::getExistingDirectory(this, "Open dataset", datasetPath);
         if(QDir(datasetPath).exists()){
             settings.setValue("dataset/path", datasetPath);
@@ -142,8 +143,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             connect(modifiers->ui->loadButton, &QPushButton::pressed, [&](){
                 document->clearModels();
                 QString filename = QFileDialog::getOpenFileName(0, "Load shape", "", "Shape graph (*.xml)");
-                if(filename.trimmed().size())
+                if(filename.trimmed().size()){
                     document->loadModel(filename);
+                    QSettings().setValue("defaultShape",filename);
+                }
                 else
                     document->createModel("untitled");
             });
@@ -173,6 +176,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             });
         }
     }
+
+    QApplication::processEvents();
+    scene->update();
 }
 
 void MainWindow::showTool(QString className)
@@ -181,6 +187,17 @@ void MainWindow::showTool(QString className)
         t->setVisible(false);
         if(t->metaObject()->className() == className)
             t->setVisible(true);
+    }
+
+    modifiers->update();
+
+    // Qt bug?
+    {
+        modifiers->ui->sketchButton->setAttribute(Qt::WA_UnderMouse, false);
+        modifiers->ui->manualBlendButton->setAttribute(Qt::WA_UnderMouse, false);
+        modifiers->ui->autoBlendButton->setAttribute(Qt::WA_UnderMouse, false);
+        modifiers->ui->structureTransferButton->setAttribute(Qt::WA_UnderMouse, false);
+        modifiers->ui->exploreButton->setAttribute(Qt::WA_UnderMouse, false);
     }
 }
 

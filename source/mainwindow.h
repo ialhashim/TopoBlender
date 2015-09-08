@@ -9,6 +9,7 @@ class MainWindow;
 
 class Document;
 class Tool;
+class ModifiersPanel;
 
 class MainWindow : public QMainWindow
 {
@@ -23,6 +24,7 @@ public:
 protected:
     QVector<Tool*> tools;
     Document * document;
+    ModifiersPanel * modifiers;
 
 private:
     Ui::MainWindow *ui;

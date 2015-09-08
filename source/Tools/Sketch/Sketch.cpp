@@ -32,6 +32,7 @@ void Sketch::init()
         auto view = new SketchView(document, this, type);
         views << view;
     }
+    resizeViews();
 
     // Add sketching UI elements
     auto toolsWidgetContainer = new QWidget();

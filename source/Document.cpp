@@ -95,11 +95,27 @@ bool Document::loadDataset(QString datasetFolder)
                 QString catName = line.front().trimmed();
                 QStringList catElements = line.back().split(QRegExp("[ \t]"), QString::SkipEmptyParts);
 
+                // Check they actually exist before adding them
+                auto existShapes = dataset.keys();
+                for(auto shape : catElements){
+                    if(!existShapes.contains(shape))
+                        catElements.removeAll(shape);
+                }
+
                 categories[catName] = catElements;
             }
 
 			if (!categories.empty())
 				currentCategory = categories.keys().front();
+        }
+        else
+        {
+            // Assume all are of the same category
+            currentCategory = "shapes";
+            QVariant catElements;
+            QStringList elements = QStringList::fromVector(dataset.keys().toVector());
+            catElements.setValue(elements);
+            categories.insert(currentCategory, catElements);
         }
     }
 
@@ -347,6 +363,16 @@ QString Document::firstModelName()
 {
     if(models.isEmpty()) return "";
     return models.front()->name();
+}
+
+QVector3D Document::extent()
+{
+    QVector3D zero(0,0,0);
+    if(models.isEmpty()) return zero;
+    auto m = models.front();
+    if(m->nodes.empty()) return zero;
+    auto diag = m->robustBBox().diagonal();
+    return QVector3D(diag.x(), diag.y(), diag.z());
 }
 
 Model* Document::getModel(QString name)

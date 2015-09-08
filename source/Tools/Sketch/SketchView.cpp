@@ -27,6 +27,8 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
 	camera = new Eigen::Camera();
 	trackball = new Eigen::Trackball();
 
+    int deltaZoom = document->extent().length() * 0.25;
+
 	if (type == VIEW_CAMERA)
 	{
         // Camera target and initial position
@@ -39,14 +41,15 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
         double theta1 = acos(-1) * 0.75;
         double theta2 = acos(-1) * 0.10;
         camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
-        camera->zoom(-4);
+        camera->zoom(-(4+deltaZoom));
         camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
 
 		trackball->setCamera(camera);
 	}
     else
     {
-        if(type != VIEW_TOP) camera->setTarget(Eigen::Vector3f(0,0.5f,0));
+        if(type != VIEW_TOP) camera->setTarget(Eigen::Vector3f(0,0.5f,deltaZoom));
+        else camera->setTarget(Eigen::Vector3f(0,0,deltaZoom));
     }
 
     // Sketching plane

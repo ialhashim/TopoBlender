@@ -65,6 +65,7 @@ public:
 
     // Stats:
     QString firstModelName();
+    QVector3D extent();
 
 	// Direct access to models
 	Model * getModel(QString name);

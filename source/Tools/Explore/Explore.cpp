@@ -92,10 +92,13 @@ void Explore::init()
                 camera->setTarget(Eigen::Vector3f(0, 0, 0.5));
                 camera->setFrame(frame);
 
+                int deltaZoom = document->extent().length() * 1.0;
+
+                // Default view angle
                 double theta1 = acos(-1) * 0.75;
                 double theta2 = acos(-1) * 0.10;
                 camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
-                camera->zoom(-4);
+                camera->zoom(-(4+deltaZoom));
                 camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
                 auto cp = camera->position();
                 cameraPos = QVector3D(cp[0], cp[1], cp[2]);
