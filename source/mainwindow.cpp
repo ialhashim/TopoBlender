@@ -27,6 +27,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     QSettings settings;
 
+    // Global options
+    {
+        // Background colors
+        if(!settings.contains("theme")){
+            settings.setValue("theme", "dark");
+            settings.setValue("darkBackColor", QColor(27, 30, 32));
+            settings.setValue("lightBackColor", QColor(124, 143, 162));
+            settings.sync();
+        }
+    }
+
     // Create document object that has shapes
     document = new Document();
 
@@ -37,6 +48,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->graphicsView->setCacheMode(QGraphicsView::CacheBackground);
     ui->graphicsView->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing);
     ui->graphicsView->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+
+    // Application wide settings
+    document->connect(ui->graphicsView, SIGNAL(globalSettingsChanged()), SLOT(sayGlobalSettingsChanged()));
 
     // Create scene
     auto scene = new GraphicsScene();

@@ -51,6 +51,9 @@ protected:
 	QVector<QVector3D> cloudNormals;
 	QColor cloudColor;
 
+    // Options
+    QVariantMap options;
+
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);
     void mousePressEvent(QGraphicsSceneMouseEvent *);

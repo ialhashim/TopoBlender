@@ -24,9 +24,11 @@ public:
     void init(){}
 protected:
     Document * document;
+    QVariantMap options;
 
 public slots:
     void setBounds(const QRectF & newBounds);
+    void globalSettingsChanged(){}
 
 signals:
     void boundsChanged();

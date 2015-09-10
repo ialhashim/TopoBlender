@@ -5,13 +5,16 @@
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
 #include <QApplication>
+#include <QSettings>
 
 GraphicsScene::GraphicsScene() : isGradientBackground(false), popup(nullptr)
 {
+    QSettings s;
+
     /// Background:
     // Colors
-    auto lightBackColor = QColor::fromRgb(124, 143, 162);
-    auto darkBackColor = QColor::fromRgb(27, 30, 32);
+    auto lightBackColor = s.value("lightBackColor").value<QColor>();
+    auto darkBackColor = s.value("darkBackColor").value<QColor>();
 
     // Gradient background
     if( isGradientBackground )

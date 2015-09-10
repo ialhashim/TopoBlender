@@ -1,5 +1,6 @@
 #include "StructureTransfer.h"
 #include <QWidget>
+#include <QSettings>
 #include "ui_StructureTransfer.h"
 #include "StructureTransferView.h"
 
@@ -12,6 +13,9 @@
 
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
+
+#include <QProcess>
+#include <QTemporaryFile>
 
 Q_DECLARE_METATYPE(Array2D_Vector3)
 
@@ -75,6 +79,48 @@ void StructureTransfer::init()
 
 		connect(widget->resampleButton, &QPushButton::pressed, [&](){
 			auto sourceModel = document->getModel(document->firstModelName());
+
+			// external re-meshing software
+			if (QGuiApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier))
+			{
+				qApp->setOverrideCursor(Qt::WaitCursor);
+
+				bool isGood = false;
+
+				for (auto n : sourceModel->nodes)
+				{
+					auto m = sourceModel->getMesh(n->id);
+
+					QTemporaryFile file("XXXXXX.obj");
+
+					if (file.open()){
+						m->write(file.fileName().toStdString());
+
+						QProcess p;
+
+						QStringList pargs;
+						pargs << file.fileName();
+						pargs << file.fileName();
+
+						p.start("vorpalite.exe", pargs);
+						p.waitForFinished(-1);
+
+						m->clear();
+						m->read(file.fileName().toStdString());
+						m->update_face_normals();
+						m->update_vertex_normals();
+						m->updateBoundingBox();
+
+						isGood = true;
+					}
+				}
+
+				((GraphicsScene*)scene())->displayMessage(QString("External mesher done. OK = %1").arg(isGood));
+
+				qApp->restoreOverrideCursor();
+
+				return;
+			}
 
 			for (auto n : sourceModel->nodes)
 			{
@@ -175,16 +221,61 @@ void StructureTransfer::thumbnailSelected(Thumbnail * t)
     auto shapeA = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*sourceModel));
     auto shapeB = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*targetModel));
 
-    auto egd = QSharedPointer<Energy::GuidedDeformation>(new Energy::GuidedDeformation);
+    QSharedPointer<Energy::GuidedDeformation> egd = QSharedPointer<Energy::GuidedDeformation>(new Energy::GuidedDeformation);
 
     egd->K = 20;
     egd->K_2 = 4;
     QVector<Energy::SearchNode> search_roots;
     egd->searchDP(shapeA.data(), shapeB.data(), search_roots);
 
-    Energy::SearchNode * selected_path = &(search_roots.back());
+    // Extract matches
+    QVector< QPair<QString,QString> > pairs;
+    {
+        Energy::SearchNode * selected_path = &(search_roots.back());
 
-    sourceModel->setAllControlPoints(selected_path->shapeA->getAllControlPoints());
+        QSet< QString > matchings;
+        for (auto key : selected_path->mapping.keys())
+        {
+            auto sn = selected_path->shapeA->getNode(key);
+            auto tn = selected_path->shapeB->getNode(selected_path->mapping[key]);
+
+            // For cutting case + splitting case
+            auto realID = [&](Structure::Node * n){
+                QString id = n->property.contains("realOriginalID") ? n->property["realOriginalID"].toString() : n->id;
+                return id.split("@").front();
+            };
+
+            QString sid = realID(sn);
+            QString tid = realID(tn);
+
+            // Check for one-to-many case
+            bool isSourceOne = !selected_path->shapeA->hasRelation(sid) || selected_path->shapeA->relationOf(sid).parts.size() == 1;
+            bool isTargetMany = selected_path->shapeB->hasRelation(tid) && selected_path->shapeB->relationOf(tid).parts.size() > 1;
+            if (isSourceOne && isTargetMany)
+            {
+                for (auto tj : selected_path->shapeB->relationOf(tid).parts)
+                    matchings << QString("%1|%2").arg(sid).arg(realID(selected_path->shapeB->getNode(tj)));
+            }
+            else
+                matchings << QString("%1|%2").arg(sid).arg(tid);
+        }
+
+        for (auto m : matchings)
+        {
+            auto matching = m.split("|");
+            auto sid = matching.front();
+            auto tid = matching.back();
+
+            pairs << qMakePair(sid,tid);
+        }
+    }
+
+	Energy::SearchNode * selected_path = &(search_roots.back());
+
+	for (auto n : sourceModel->nodes)
+	{
+		n->setControlPoints(selected_path->shapeA->getNode(n->id)->controlPoints());
+	}
 
     ShapeGeometry::decodeGeometry(sourceModel);
 

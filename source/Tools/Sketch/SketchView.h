@@ -61,11 +61,15 @@ public:
 
 	SketchManipulatorTool * manTool;
 
+    QVariantMap options;
     QStringList messages;
 
 	// DEBUG visual elements
 	QVector<QVector3D> dbg_lines, dbg_lines2;
 	QVector<QVector3D> dbg_points, dbg_points2;
+
+    // With friends like these
+    friend class Sketch;
 
 public slots:
 	void setSketchOp(SketchViewOp toSketchOp);

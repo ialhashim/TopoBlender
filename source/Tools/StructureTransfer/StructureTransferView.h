@@ -34,6 +34,7 @@ public:
 
 protected:
     Document * document;
+    QVariantMap options;
 
 public:
     // Camera movement

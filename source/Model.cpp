@@ -413,7 +413,8 @@ void Model::draw(Viewer *glwidget)
     QVector<SurfaceMeshModel *> meshes;
     for(auto n : nodes){
         auto mesh = getMesh(n->id);
-        if(mesh != nullptr) { meshes << mesh; } else
+        if(mesh != nullptr) { meshes << mesh; } 
+		else
         {
             if(n->type() == Structure::CURVE)
             {

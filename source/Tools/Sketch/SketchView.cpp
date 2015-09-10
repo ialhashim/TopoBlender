@@ -9,6 +9,7 @@
 
 #include <QGraphicsView>
 #include <QWidget>
+#include <QSettings>
 #include <QPainter>
 #include <QLinearGradient>
 #include <QOpenGLFramebufferObject>
@@ -70,6 +71,19 @@ leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document
 	manTool = new SketchManipulatorTool(this);
 	manTool->setVisible(false);
     manTool->view = this;
+
+    // Background settings
+    QSettings s;
+    options["lightBackColor"].setValue(s.value("lightBackColor").value<QColor>());
+    options["darkBackColor"].setValue(s.value("darkBackColor").value<QColor>());
+
+    // Global settings
+    connect(document, &Document::globalSettingsChanged, [&](){
+        QSettings s;
+        options["lightBackColor"].setValue(s.value("lightBackColor").value<QColor>());
+        options["darkBackColor"].setValue(s.value("darkBackColor").value<QColor>());
+        scene()->update(sceneBoundingRect());
+    });
 }
 
 SketchView::~SketchView()
@@ -227,8 +241,8 @@ void SketchView::prePaint(QPainter * painter, QWidget *)
 		auto rect = boundingRect();
 
         // Colors
-		auto lightBackColor = QColor::fromRgb(124, 143, 162);
-		auto darkBackColor = QColor::fromRgb(27, 30, 32);
+        auto lightBackColor = options["lightBackColor"].value<QColor>();
+        auto darkBackColor = options["darkBackColor"].value<QColor>();
 
 		if (type == VIEW_CAMERA)
         {

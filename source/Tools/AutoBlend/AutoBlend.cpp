@@ -184,25 +184,28 @@ void AutoBlend::doBlend()
             if(cacheSource == nullptr || cacheTarget == nullptr) continue;
 
             auto source = QSharedPointer<Structure::Graph>(cacheSource->cloneAsShapeGraph());
-            auto target = QSharedPointer<Structure::Graph>(cacheTarget->cloneAsShapeGraph());
+			auto target = QSharedPointer<Structure::Graph>(cacheTarget->cloneAsShapeGraph());
 
-            // Apply computed correspondence
-            auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));
+			auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));
 
-            for (auto n : source->nodes)
-            {
-                QString sid = n->id;
+			// Apply computed correspondence
+			if (false) // enable/disable auto correspondence
+			{
+				for (auto n : source->nodes)
+				{
+					QString sid = n->id;
 
-                if (document->datasetCorr[sourceName][sid][targetName].empty())
-                {
-                    gcorr->setNonCorresSource(sid);
-                }
-                else
-                {
-                    auto tid = document->datasetCorr[sourceName][sid][targetName].front();
-                    gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
-                }
-            }
+					if (document->datasetCorr[sourceName][sid][targetName].empty())
+					{
+						gcorr->setNonCorresSource(sid);
+					}
+					else
+					{
+						auto tid = document->datasetCorr[sourceName][sid][targetName].front();
+						gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
+					}
+				}
+			}
 
             gcorr->computeCorrespondences();
 

@@ -214,6 +214,11 @@ void Document::sayPairwiseAnalysisDone()
     emit(categoryPairwiseDone());
 }
 
+void Document::sayGlobalSettingsChanged()
+{
+    emit(globalSettingsChanged());
+}
+
 void Document::savePairwise(QString filename)
 {
     QFile file(filename);

@@ -8,6 +8,7 @@
 #include "Document.h"
 #include "Model.h"
 
+#include <QSettings>
 #include <QGraphicsProxyWidget>
 #include <QVBoxLayout>
 #include <QSlider>
@@ -39,6 +40,11 @@ StructureTransferView::StructureTransferView(Document *document, QGraphicsItem *
 
         trackball->setCamera(camera);
     }
+
+    // Background:
+    QSettings s;
+    options["lightBackColor"].setValue(s.value("lightBackColor").value<QColor>());
+    options["darkBackColor"].setValue(s.value("darkBackColor").value<QColor>());
 }
 
 StructureTransferView::~StructureTransferView()
@@ -117,8 +123,8 @@ void StructureTransferView::paint(QPainter *painter, const QStyleOptionGraphicsI
 void StructureTransferView::prePaint(QPainter *painter, QWidget *)
 {
     // Background
-    auto lightBackColor = QColor::fromRgb(124, 143, 162);
-    auto darkBackColor = QColor::fromRgb(27, 30, 32);
+    auto lightBackColor = options["lightBackColor"].value<QColor>();
+    auto darkBackColor = options["darkBackColor"].value<QColor>();
 
     QLinearGradient gradient(0, 0, 0, rect.height());
     gradient.setColorAt(0.0, lightBackColor);

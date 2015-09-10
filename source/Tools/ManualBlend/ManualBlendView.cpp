@@ -11,6 +11,7 @@
 #include "Thumbnail.h"
 #include "Gallery.h"
 
+#include <QSettings>
 #include <QGraphicsProxyWidget>
 #include <QVBoxLayout>
 #include <QSlider>
@@ -42,6 +43,11 @@ ManualBlendView::ManualBlendView(Document *document, QGraphicsItem * parent) : Q
 
         trackball->setCamera(camera);
     }
+
+    // Background:
+    QSettings s;
+    options["lightBackColor"].setValue(s.value("lightBackColor").value<QColor>());
+    options["darkBackColor"].setValue(s.value("darkBackColor").value<QColor>());
 }
 
 ManualBlendView::~ManualBlendView()
@@ -129,8 +135,8 @@ void ManualBlendView::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 void ManualBlendView::prePaint(QPainter *painter, QWidget *)
 {
     // Background
-    auto lightBackColor = QColor::fromRgb(124, 143, 162);
-    auto darkBackColor = QColor::fromRgb(27, 30, 32);
+    auto lightBackColor = options["lightBackColor"].value<QColor>();
+    auto darkBackColor = options["darkBackColor"].value<QColor>();
 
     QLinearGradient gradient(0, 0, 0, rect.height());
     gradient.setColorAt(0.0, lightBackColor);

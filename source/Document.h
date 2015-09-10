@@ -79,14 +79,17 @@ public:
 protected:
     QVector< QSharedPointer<Model> > models;
     QMap< QString, QSharedPointer<Model> > cachedModels;
+    QVariantMap options;
 
 signals:
     void analyzeProgress(int);
     void categoryAnalysisDone();
     void categoryPairwiseDone();
+    void globalSettingsChanged();
 
 public slots:
     void sayCategoryAnalysisDone();
     void sayPairwiseAnalysisDone();
+    void sayGlobalSettingsChanged();
 };
 
