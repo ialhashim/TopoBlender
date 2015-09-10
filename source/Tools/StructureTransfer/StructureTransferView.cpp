@@ -25,8 +25,8 @@ StructureTransferView::StructureTransferView(Document *document, QGraphicsItem *
 
         // Camera target and initial position
         auto frame = camera->frame();
-        frame.position = Eigen::Vector3f(-1, 0, 0.5);
-        camera->setTarget(Eigen::Vector3f(0,0,0.5));
+        frame.position = Eigen::Vector3f(-1, 0, 0.75);
+        camera->setTarget(Eigen::Vector3f(0, 0, 0.75));
         camera->setFrame(frame);
 
         int deltaZoom = document->extent().length() * 0.25;

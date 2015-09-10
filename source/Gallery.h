@@ -14,7 +14,7 @@ public:
 
 	QRectF rect;
     QRectF boundingRect() const { return rect; }
-    void setRect(const QRectF & newRect){ rect = newRect; }
+    void setRect(const QRectF & newRect);
 
     void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = 0);
 

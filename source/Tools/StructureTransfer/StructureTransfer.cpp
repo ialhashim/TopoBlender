@@ -49,11 +49,11 @@ void StructureTransfer::init()
     widgetProxy->moveBy(-delta.x(), -delta.y());
 
     // Create gallery of shapes
-    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 140));
+    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 180));
 
     auto dropShadow = new QGraphicsDropShadowEffect();
     dropShadow->setOffset(0, 5);
-    dropShadow->setColor(Qt::black);
+    dropShadow->setColor(QColor(0,0,0,128));
     dropShadow->setBlurRadius(10);
     gallery->setGraphicsEffect(dropShadow);
 
@@ -201,6 +201,11 @@ void StructureTransfer::init()
 void StructureTransfer::resizeViews()
 {
     if(view) view->setRect(bounds);
+	if (gallery){
+		auto r = gallery->rect;
+		r.setWidth(bounds.width());
+		gallery->setRect(r);
+	}
 }
 
 void StructureTransfer::thumbnailSelected(Thumbnail * t)

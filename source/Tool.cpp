@@ -13,6 +13,10 @@ void Tool::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
         painter->setPen(QPen(Qt::red, 5));
         painter->drawRect(bounds);
     }
+
+	if (property("hasBackground").toBool()){
+		painter->fillRect(sceneBoundingRect(), property("backgroundColor").value<QColor>());
+	}
 }
 
 void Tool::setBounds(const QRectF &newBounds){

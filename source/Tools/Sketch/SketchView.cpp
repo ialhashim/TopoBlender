@@ -632,5 +632,21 @@ void SketchView::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_M) setSketchOp(TRANSFORM_PART);
     if(event->key() == Qt::Key_D) setSketchOp(DEFORM_SKETCH);
 
+	// Random color parts
+	if (event->key() == Qt::Key_C)
+	{
+		auto model = document->getModel(document->firstModelName());
+
+		for (auto n : model->nodes)
+			model->setColorFor(n->id, starlab::qRandomColor2());
+
+		for (auto g : model->groups){
+			auto groupColor = starlab::qRandomColor2();
+			for (auto nid : g){
+				model->setColorFor(nid, groupColor);
+			}
+		}
+	}
+
     scene()->update(sceneBoundingRect());
 }

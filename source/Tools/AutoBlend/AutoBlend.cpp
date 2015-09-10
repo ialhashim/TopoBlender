@@ -79,7 +79,7 @@ void AutoBlend::init()
 
     auto dropShadow = new QGraphicsDropShadowEffect();
 	dropShadow->setOffset(0, 5);
-	dropShadow->setColor(Qt::black);
+	dropShadow->setColor(QColor(0, 0, 0, 128));
 	dropShadow->setBlurRadius(10);
 	gallery->setGraphicsEffect(dropShadow);
 

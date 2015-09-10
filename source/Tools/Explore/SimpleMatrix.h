@@ -41,6 +41,8 @@ namespace smat
 		
 		void set(int r, int c, T value); // row, column, value
 		T get(int r, int c); // row, column
+		T maxiumumColumn(int r);
+		T minimumColumn(int r);
 		int rows(); // number of rows
 		int columns(); // number of columns
 		
@@ -371,6 +373,26 @@ namespace smat
 			exit(1);
 		}
 		return v[r][c];
+	}
+
+	template<class T>
+	T Matrix<T>::maxiumumColumn(int r) // row, column
+	{
+		int mr, mc;
+		double mx = this->minEl(mr,mc);
+		for (int i = 0; i < columns_; i++)
+			mx = std::max(mx, get(r, i));
+		return mx;
+	}
+
+	template<class T>
+	T Matrix<T>::minimumColumn(int r) // row, column
+	{
+		int mr, mc;
+		double mi = this->maxEl(mr, mc);
+		for (int i = 0; i < columns_; i++)
+			mi = std::min(mi, get(r, i));
+		return mi;
 	}
 	
 	template<class T>

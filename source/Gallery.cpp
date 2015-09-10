@@ -41,6 +41,21 @@ rect(rect), defaultItemRect(defaultItemRect), scrollbar(nullptr)
     }
 }
 
+void Gallery::setRect(const QRectF & newRect)
+{
+	rect = newRect;
+
+	// Move scroll bar if any
+	if (scrollbar)
+	{
+		int sw = 16;
+		QRect scrollbarRect = QRect(rect.width() - sw, 0, sw, rect.height());
+		if (scrollbar->orientation() == Qt::Horizontal)
+			scrollbarRect = QRect(0, rect.height() - sw, rect.width(), sw);
+		scrollbar->setGeometry(scrollbarRect);
+	}
+}
+
 void Gallery::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
 	painter->fillRect(rect, QColor(0, 0, 0, 100));

@@ -12,6 +12,11 @@
 
 #include "Model.h"
 
+#include "voronoi.hpp"
+using namespace cinekine;
+
+#include "DivergingColorMaps.hpp"
+
 Explore::Explore(Document *document, const QRectF &bounds) : Tool(document)
 {
     setBounds(bounds);
@@ -20,6 +25,9 @@ Explore::Explore(Document *document, const QRectF &bounds) : Tool(document)
 
 void Explore::init()
 {
+	setProperty("hasBackground", true);
+	setProperty("backgroundColor", QColor(0,0,0,50));
+
     // Add widget
     auto toolsWidgetContainer = new QWidget();
     widget = new Ui::ExploreWidget();
@@ -126,6 +134,7 @@ void Explore::init()
                     }
                     mesh.addTri(fp[0], fp[1], fp[2], fn[0], fn[1], fn[2]);
                 }
+
                 mesh.color = color;
                 return mesh;
             };
@@ -150,23 +159,41 @@ void Explore::init()
             double dy = bounds.height() * 0.2;
             QRectF r(0, 0, bounds.width() - dx, bounds.height() - dy);
 
-            QRectF thumbRect(0,0,92,92);
+			QRectF thumbRect(0, 0, 150, 150);
 
             QMap<QString, Thumbnail*> thumbs;
 
-            for(int i = 0; i < catModels.size(); i++)
-            {
-                auto s = catModels[i];
+			voronoi::Sites sites;
 
-                auto posRelative = QPointF((X->get(i,0) - allPointsRect.left())/allPointsRect.width(),
-                                            (X->get(i,1) - allPointsRect.top())/allPointsRect.height());
-                auto pos = QPointF((posRelative.x() * r.width()) + (dx/2.0), (posRelative.y() * r.height()) + (dy/2.0));
+			for (int i = 0; i < catModels.size(); i++)
+			{
+				auto s = catModels[i];
+
+				auto posRelative = QPointF((X->get(i, 0) - allPointsRect.left()) / allPointsRect.width(),
+					(X->get(i, 1) - allPointsRect.top()) / allPointsRect.height());
+				auto pos = QPointF((posRelative.x() * r.width()) + (dx / 2.0), (posRelative.y() * r.height()) + (dy / 2.0));
+
+				sites.push_back(voronoi::Vertex(pos.x(), pos.y()));
+			}
+
+			//voronoi::Graph graph = voronoi::build(voronoi::lloyd_relax(sites, bounds.width(), bounds.height(), 5), bounds.width(), bounds.height());
+			voronoi::Graph graph = voronoi::build(std::move(sites), bounds.width(), bounds.height());
+			
+			for (int i = 0; i < catModels.size(); i++)
+			{
+				auto s = catModels[i];
+
+				auto site = graph.sites().at(i);
+				QPointF pos (site.x, site.y);
 
                 auto t = new Thumbnail(this, thumbRect);
-                t->setCaption(s);
+                //t->setCaption(s);
+				t->setCaption("");
                 t->setMesh();
                 t->setCamera(cameraPos, cameraMatrix);
-                t->setFlag(QGraphicsItem::ItemIsSelectable);
+
+				t->setProperty("isNoBackground", true);
+				t->setProperty("isNoBorder", true);
 
                 // Add parts of target shape
                 auto m = document->cacheModel(s);
@@ -208,8 +235,12 @@ void Explore::init()
                 return QColor::fromRgbF(qMax(0.0, qMin(r,1.0)), qMax(0.0, qMin(g,1.0)), qMax(0.0, qMin(b,1.0)));
             };
 
+			// Visualize Edges
+			auto colorMapTable = makeColorMap();
             for(int i = 0; i < catModels.size(); i++)
             {
+				double lowestCost = D.maxiumumColumn(i);
+
                 for(int j = i+1; j < catModels.size(); j++)
                 {
                     auto s = catModels[i], t = catModels[j];
@@ -219,21 +250,37 @@ void Explore::init()
                     QLineF linef(this->mapFromItem(t1, t1->boundingRect().center()),
                                  this->mapFromItem(t2, t2->boundingRect().center()));
 
-                    double d = 1.0 - ((D.get(i,j) - min_val) / (max_val - min_val));
-                    d = pow(d, 2);
+                    double similarity = 1.0 - ((D.get(i,j) - min_val) / (max_val - min_val));
+					similarity = pow(similarity, 3);
 
-                    if(d >= 0.5)
+					// Check if edge is in triangulation
+					if (similarity >= 0.25)
                     {
-                        d = (d - 0.5) / 0.5;
+						auto site = graph.sites().at(i);
+						auto cell = graph.cells()[site.cell];
+						for (auto he : cell.halfEdges){
+							if (he.edge < 0) continue;
+							auto edge = graph.edges()[he.edge];
 
-                        QColor color = qtJetColor(d, 0, 1);
-                        color.setAlphaF(d);
+							bool test1 = edge.leftSite == i && edge.rightSite == j;
+							bool test2 = edge.rightSite == i && edge.leftSite == j;
+							bool test3 = lowestCost == D.get(i, j);
 
-                        auto line = scene()->addLine(linef, QPen(color, d * 4));
+							if (test1 || test2 || test3)
+							{
+								//auto c = getColorFromMap(similarity, colorMapTable);
+								//QColor color(c[0], c[1], c[2]);
+								//QColor color = starlab::qtColdColor(similarity);
+								QColor color = starlab::qtJetColor(similarity);
+								color.setAlphaF(0.5 * similarity);
 
-                        line->setParentItem(this);
-                        line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
-                        line->setZValue(-1);
+								auto line = scene()->addLine(linef, QPen(color, similarity * 3));
+
+								line->setParentItem(this);
+								line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
+								line->setZValue(-1);
+							}
+						}
                     }
                 }
             }

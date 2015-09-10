@@ -140,6 +140,8 @@ void Thumbnail::prePaint(QPainter *painter, QWidget *)
 {
     bool isFlatBackground = false;
 
+	if(property("isNoBackground").toBool()) return;
+
     // Flat Background
     if(isFlatBackground)
     {
@@ -163,6 +165,8 @@ void Thumbnail::prePaint(QPainter *painter, QWidget *)
 
 void Thumbnail::postPaint(QPainter * painter, QWidget *)
 {
+	if (property("isNoBorder").toBool()) return;
+
 	if (this->isUnderMouse()){
 		painter->setRenderHint(QPainter::Antialiasing, false);
         painter->setPen(QPen(QColor(255,255,0,128), 1));
