@@ -84,6 +84,8 @@ bool Document::loadDataset(QString datasetFolder)
     // Load categories
     if(!dataset.empty())
     {
+        auto existShapes = dataset.keys();
+
         QFile file( datasetPath + "/categories.txt" );
         if (file.open(QIODevice::ReadOnly | QIODevice::Text))
         {
@@ -96,13 +98,14 @@ bool Document::loadDataset(QString datasetFolder)
                 QStringList catElements = line.back().split(QRegExp("[ \t]"), QString::SkipEmptyParts);
 
                 // Check they actually exist before adding them
-                auto existShapes = dataset.keys();
+                QStringList existingElements;
                 for(auto shape : catElements){
-                    if(!existShapes.contains(shape))
-                        catElements.removeAll(shape);
+                    if(existShapes.contains(shape))
+                        existingElements << shape;
                 }
 
-                categories[catName] = catElements;
+                if(!existingElements.empty())
+                    categories[catName] = existingElements;
             }
 
 			if (!categories.empty())
