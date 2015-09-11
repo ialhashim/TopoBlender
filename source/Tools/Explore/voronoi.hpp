@@ -1,3 +1,5 @@
+#pragma once
+
 // Source: https://github.com/samkusin/gamelabs/tree/master/voronoi
 // with a bug fix (ennetws)
 /* Usage:
@@ -735,7 +737,7 @@ namespace cinekine
 			voronoi::Graph graph = voronoi::build(std::move(curSites), boundX, boundY);
 			curSites.clear();
 			for (size_t c = 0; c < graph.sites().size(); c++){
-				auto centroid = graph.cellCentroid(c);
+                auto centroid = graph.cellCentroid((int)c);
 				curSites.push_back(Vertex(centroid.x, centroid.y));
 			}
 		}

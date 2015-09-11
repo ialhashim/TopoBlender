@@ -2,22 +2,15 @@
 #include "ui_Explore.h"
 
 #include "Document.h"
-#include "Camera.h"
 #include "GraphicsScene.h"
 #include "GraphicsView.h"
 
 #include "Thumbnail.h"
+#include "ExploreLiveView.h"
 
-#include "SimpleMatrix.h"
+#include "ExploreProcess.h"
 
-#include "Model.h"
-
-#include "voronoi.hpp"
-using namespace cinekine;
-
-#include "DivergingColorMaps.hpp"
-
-Explore::Explore(Document *document, const QRectF &bounds) : Tool(document)
+Explore::Explore(Document *document, const QRectF &bounds) : Tool(document), liveView(nullptr)
 {
     setBounds(bounds);
     setObjectName("explore");
@@ -25,8 +18,8 @@ Explore::Explore(Document *document, const QRectF &bounds) : Tool(document)
 
 void Explore::init()
 {
-	setProperty("hasBackground", true);
-	setProperty("backgroundColor", QColor(0,0,0,50));
+	//setProperty("hasBackground", true);
+	//setProperty("backgroundColor", QColor(0,0,0,50));
 
     // Add widget
     auto toolsWidgetContainer = new QWidget();
@@ -61,16 +54,18 @@ void Explore::init()
         });
 
         connect(document, &Document::categoryPairwiseDone, [=](){
+
             // Clean up earlier results
-            for(auto i : this->childItems()) if(i != widgetProxy) scene()->removeItem(i);
+            for(auto i : this->childItems())
+            {
+                if(i != widgetProxy) scene()->removeItem(i);
+                thumbs.clear();
+                lines.clear();
+            }
 
             auto catModels = document->categories[ document->currentCategory ].toStringList();
 
-            smat::Matrix<double> D(catModels.size(), catModels.size(), 0);
-
-            // Range
-            double min_val = 1.0, max_val = 0.0;
-
+            // Build distance matrix
             for(int i = 0; i < catModels.size(); i++)
             {
                 for(int j = i+1; j < catModels.size(); j++)
@@ -80,166 +75,72 @@ void Explore::init()
                     double dist = std::max(document->datasetMatching[s][t]["min_cost"].toDouble(),
                                            document->datasetMatching[t][s]["min_cost"].toDouble());
 
-                    D.set(i,j,dist);
-                    D.set(j,i,dist);
-
-                    // Non-zero
-                    if(dist != 0){
-                        min_val = std::min(min_val, dist);
-                        max_val = std::max(max_val, dist);
-                    }
+                    distMat[i][j] = distMat[j][i] = dist;
                 }
             }
-
-            // Default view angle
-            {
-                // Camera target and initial position
-                auto camera = new Eigen::Camera();
-                auto frame = camera->frame();
-                frame.position = Eigen::Vector3f(-1, 0, 0.5);
-                camera->setTarget(Eigen::Vector3f(0, 0, 0.5));
-                camera->setFrame(frame);
-
-                int deltaZoom = document->extent().length() * 1.0;
-
-                // Default view angle
-                double theta1 = acos(-1) * 0.75;
-                double theta2 = acos(-1) * 0.10;
-                camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
-                camera->zoom(-(4+deltaZoom));
-                camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
-                auto cp = camera->position();
-                cameraPos = QVector3D(cp[0], cp[1], cp[2]);
-
-                // Camera settings
-                camera->setViewport(128, 128);
-                Eigen::Matrix4f p = camera->projectionMatrix();
-                Eigen::Matrix4f v = camera->viewMatrix().matrix();
-                p.transposeInPlace();
-                v.transposeInPlace();
-                cameraMatrix = QMatrix4x4(p.data()) * QMatrix4x4(v.data());
-            }
-
-            // From surface mesh to basic mesh
-            auto toBasicMesh = [&](opengp::SurfaceMesh::SurfaceMeshModel * m, QColor color){
-                Thumbnail::QBasicMesh mesh;
-                m->update_face_normals();
-                for (auto f : m->faces()){
-                    QVector<QVector3D> fp, fn;
-                    for (auto vf : m->vertices(f)){
-                        auto p = m->vertex_coordinates()[vf];
-                        auto n = m->face_normals()[f];
-                        fp << QVector3D(p[0], p[1], p[2]);
-                        fn << QVector3D(n[0], n[1], n[2]);
-                    }
-                    mesh.addTri(fp[0], fp[1], fp[2], fn[0], fn[1], fn[2]);
-                }
-
-                mesh.color = color;
-                return mesh;
-            };
 
             // MDS
-            QSharedPointer< smat::Matrix<double> > X;
-
-            if(widget->vizOption->currentIndex() == 0) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_SMACOF(&D, NULL, 2, 30));
-            if(widget->vizOption->currentIndex() == 1) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_UCF(&D, NULL, 2, 30));
-
-            /// Plot:
-            // Compute spatial range:
-            QPolygonF allPoints;
-            for(int i = 0; i < catModels.size(); i++)
-            {
-                allPoints << QPointF(X->get(i,0), X->get(i,1));
-            }
+            auto allPoints = ExploreProcess::embed(distMat, widget->vizOption->currentIndex());
             auto allPointsRect = allPoints.boundingRect();
 
-            // Plot points
+            // Rescale and position points
             double dx = bounds.width() * 0.2;
             double dy = bounds.height() * 0.2;
             QRectF r(0, 0, bounds.width() - dx, bounds.height() - dy);
-
-			QRectF thumbRect(0, 0, 150, 150);
-
-            QMap<QString, Thumbnail*> thumbs;
-
-			voronoi::Sites sites;
-
+            QPolygonF positions;
 			for (int i = 0; i < catModels.size(); i++)
-			{
-				auto s = catModels[i];
+            {
+                double x = allPoints[i].x(), y = allPoints[i].y();
 
-				auto posRelative = QPointF((X->get(i, 0) - allPointsRect.left()) / allPointsRect.width(),
-					(X->get(i, 1) - allPointsRect.top()) / allPointsRect.height());
-				auto pos = QPointF((posRelative.x() * r.width()) + (dx / 2.0), (posRelative.y() * r.height()) + (dy / 2.0));
+                auto posRelative = QPointF(
+                            (x - allPointsRect.left()) / allPointsRect.width(),
+                            (y - allPointsRect.top()) / allPointsRect.height());
 
-				sites.push_back(voronoi::Vertex(pos.x(), pos.y()));
+                auto pos = QPointF((posRelative.x() * r.width()) + (dx / 2.0),
+                                   (posRelative.y() * r.height()) + (dy / 2.0));
+
+                positions << pos;
 			}
 
-			//voronoi::Graph graph = voronoi::build(voronoi::lloyd_relax(sites, bounds.width(), bounds.height(), 5), bounds.width(), bounds.height());
-			voronoi::Graph graph = voronoi::build(std::move(sites), bounds.width(), bounds.height());
-			
+            // Build voronoi
+            auto graph = ExploreProcess::buildGraph(positions, bounds.width(), bounds.height());
+
+            // Create thumbnails
 			for (int i = 0; i < catModels.size(); i++)
-			{
-				auto s = catModels[i];
+            {
+                QPointF pos = graph.cells[i].pos;
 
-				auto site = graph.sites().at(i);
-				QPointF pos (site.x, site.y);
+                auto s = catModels[i];
 
-                auto t = new Thumbnail(this, thumbRect);
-                //t->setCaption(s);
-				t->setCaption("");
-                t->setMesh();
-                t->setCamera(cameraPos, cameraMatrix);
+                thumbs[s] = ExploreProcess::makeThumbnail(this, document, s, pos);
 
-				t->setProperty("isNoBackground", true);
-				t->setProperty("isNoBorder", true);
-
-                // Add parts of target shape
-                auto m = document->cacheModel(s);
-                for (auto n : m->nodes){
-                    t->addAuxMesh(toBasicMesh(m->getMesh(n->id), n->vis_property["color"].value<QColor>()));
-                }
-
-                t->setPos(pos - thumbRect.center());
-
-                thumbs[s] = t;
+                thumbs[s]->setProperty("isIgnoreMouse", true);
             }
 
-            /*
-               Return a RGB color value given a scalar v in the range [vmin,vmax]
-               In this case each color component ranges from 0 (no contribution) to
-               1 (fully saturated), modifications for other ranges is trivial.
-               The color is clipped at the end of the scales if v is outside
-               the range [vmin,vmax] - from StackOverflow/7706339
-            */
-            auto qtJetColor = [&](double v, double vmin,double vmax){
-                double dv;
-                if (v < vmin) v = vmin;
-                if (v > vmax) v = vmax;
-                dv = vmax - vmin;
-                double r = 1, g = 1, b = 1;
-                if (v < (vmin + 0.25 * dv)) {
-                    r = 0;
-                    g = 4 * (v - vmin) / dv;
-                } else if (v < (vmin + 0.5 * dv)) {
-                    r = 0;
-                    b = 1 + 4 * (vmin + 0.25 * dv - v) / dv;
-                } else if (v < (vmin + 0.75 * dv)) {
-                    r = 4 * (v - vmin - 0.5 * dv) / dv;
-                    b = 0;
-                } else {
-                    g = 1 + 4 * (vmin + 0.75 * dv - v) / dv;
-                    b = 0;
-                }
-                return QColor::fromRgbF(qMax(0.0, qMin(r,1.0)), qMax(0.0, qMin(g,1.0)), qMax(0.0, qMin(b,1.0)));
-            };
+            // Distance matrix ranges
+            max_val = 0;
+            min_val = 1;
 
-			// Visualize Edges
-			auto colorMapTable = makeColorMap();
+            QVector<double> maximumColumn;
+            maximumColumn.fill(-1, catModels.size());
+            for(int i = 0; i < catModels.size(); i++){
+                for(int j = 0; j < catModels.size(); j++){
+                    auto d = distMat[i][j];
+
+                    maximumColumn[i] = std::max(maximumColumn[i], d);
+
+                    // Non-zero
+                    if(d != 0){
+                        min_val = std::min(min_val, d);
+                        max_val = std::max(max_val, d);
+                    }
+                }
+            }
+
+            // Visualize Edges
             for(int i = 0; i < catModels.size(); i++)
             {
-				double lowestCost = D.maxiumumColumn(i);
+                double bestCost = maximumColumn[i];
 
                 for(int j = i+1; j < catModels.size(); j++)
                 {
@@ -250,28 +151,23 @@ void Explore::init()
                     QLineF linef(this->mapFromItem(t1, t1->boundingRect().center()),
                                  this->mapFromItem(t2, t2->boundingRect().center()));
 
-                    double similarity = 1.0 - ((D.get(i,j) - min_val) / (max_val - min_val));
+                    double similarity = 1.0 - ((distMat[i][j] - min_val) / (max_val - min_val));
+
 					similarity = pow(similarity, 3);
 
 					// Check if edge is in triangulation
 					if (similarity >= 0.25)
                     {
-						auto site = graph.sites().at(i);
-						auto cell = graph.cells()[site.cell];
-						for (auto he : cell.halfEdges){
-							if (he.edge < 0) continue;
-							auto edge = graph.edges()[he.edge];
-
-							bool test1 = edge.leftSite == i && edge.rightSite == j;
-							bool test2 = edge.rightSite == i && edge.leftSite == j;
-							bool test3 = lowestCost == D.get(i, j);
+                        for (auto edge : graph.cells[i].edges)
+                        {
+                            if (edge.first < 0 || edge.second < 0) continue;
+                            bool test1 = edge.first == i && edge.second == j;
+                            bool test2 = edge.second == i && edge.first == j;
+                            bool test3 = bestCost == distMat[i][j];
 
 							if (test1 || test2 || test3)
-							{
-								//auto c = getColorFromMap(similarity, colorMapTable);
-								//QColor color(c[0], c[1], c[2]);
-								//QColor color = starlab::qtColdColor(similarity);
-								QColor color = starlab::qtJetColor(similarity);
+                            {
+                                QColor color = ExploreProcess::qtJetColor(similarity);
 								color.setAlphaF(0.5 * similarity);
 
 								auto line = scene()->addLine(linef, QPen(color, similarity * 3));
@@ -279,11 +175,178 @@ void Explore::init()
 								line->setParentItem(this);
 								line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
 								line->setZValue(-1);
+
+                                lines[qMakePair(i,j)] = line;
 							}
 						}
                     }
                 }
             }
+
+            // Live synthesis
+            liveView = new ExploreLiveView(this, document);
+            auto ritem = new QGraphicsRectItem(QRectF(-5,-5,10,10), liveView);
+            ritem->setPen(QPen(Qt::white, 3));
         });
+    }
+}
+
+void Explore::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
+{
+    if(liveView == nullptr || lines.empty()) return;
+    if(event->buttons().testFlag(Qt::RightButton)) return;
+
+    auto pointLineDist = [&](QPointF p, QLineF l, QPointF & projection){
+        QVector2D v (l.p2() - l.p1());
+        QVector2D w (p - l.p1());
+        auto c1 = QVector2D::dotProduct(w,v);
+        if ( c1 <= 0 ) {projection = l.p1(); return QVector2D(p - l.p1()).length();}
+        auto c2 = QVector2D::dotProduct(v,v);
+        if ( c2 <= c1 ) {projection = l.p2(); return QVector2D(p - l.p2()).length();}
+        auto b = c1 / c2;
+        QVector2D Pb (QVector2D(l.p1()) + b * v);
+        projection = Pb.toPointF();
+        return (QVector2D(p) - Pb).length();
+    };
+
+    QMap< double, QPair<int,int> > dists;
+    for(auto key : lines.keys())
+    {
+        auto l = lines[key];
+        auto line = l->line();
+
+        QPointF proj;
+        double dist = pointLineDist(event->pos(), line, proj);
+
+        dists[dist] = key;
+
+        auto pen = l->pen();
+        auto color = pen.color();
+        color.setAlphaF(0.25);
+        pen.setColor(color);
+        pen.setWidth(1);
+        l->setPen(pen);
+    }
+
+    // Blend details
+    QVariantMap info;
+
+    // Find projection online
+    {
+        // Closest line
+        auto key = dists.keys().front();
+        auto best = dists[key];
+        auto bestLine = lines[best];
+
+        // Change visualization
+        auto pen = bestLine->pen();
+        auto color = pen.color();
+        color.setAlphaF(1);
+        pen.setColor(color);
+        pen.setWidth(4);
+        bestLine->setPen(pen);
+
+        // Project on best line
+        QPointF proj;
+        pointLineDist(event->pos(),bestLine->line(),proj);
+        liveView->setPos(proj);
+
+        auto catModels = document->categories[ document->currentCategory ].toStringList();
+
+        startShape = catModels[best.first];
+        targetShape = catModels[best.second];
+
+        alpha = (bestLine->line().p1() - proj).manhattanLength() / bestLine->line().length();
+    }
+
+    // Do blend
+    info["source"].setValue(startShape);
+    info["target"].setValue(targetShape);
+    info["alpha"].setValue(alpha);
+    liveView->showBlend( info );
+}
+
+void Explore::mousePressEvent(QGraphicsSceneMouseEvent *  event)
+{
+    if(liveView == nullptr || thumbs.empty()) return;
+
+    auto closestThumbnail = [&](){
+        double min_dist = bounds.height() * bounds.width();
+        Thumbnail * best = nullptr;
+        for(auto t : thumbs){
+            QPointF c = this->mapFromItem(t, t->boundingRect().center());
+            double dist = (event->pos() - c).manhattanLength();
+            if(dist < min_dist){
+                min_dist = dist;
+                best = t;
+            }
+        }
+        return best;
+    };
+
+    if(event->button() == Qt::RightButton)
+    {
+        startShape = closestThumbnail()->data["shape"].toString();
+    }
+}
+
+void Explore::mouseReleaseEvent(QGraphicsSceneMouseEvent *  event)
+{
+    if(liveView == nullptr || thumbs.empty()) return;
+
+    if(event->button() == Qt::LeftButton)
+    {
+        QVariantMap info;
+        info["source"].setValue(startShape);
+        info["target"].setValue(targetShape);
+        info["alpha"].setValue(alpha);
+        liveView->showBlend(info);
+        return;
+    }
+
+    if(!(event->button() == Qt::RightButton)) return;
+
+    auto closestThumbnail = [&](){
+        double min_dist = bounds.height() * bounds.width();
+        Thumbnail * best = nullptr;
+        for(auto t : thumbs){
+            QPointF c = this->mapFromItem(t, t->boundingRect().center());
+            double dist = (event->pos() - c).manhattanLength();
+            if(dist < min_dist){
+                min_dist = dist;
+                best = t;
+            }
+        }
+        return best;
+    };
+
+    QString target = closestThumbnail()->data["shape"].toString();
+    if(startShape == target) return;
+
+    // Add a new link
+    {
+        auto catModels = document->categories[ document->currentCategory ].toStringList();
+
+        int i = catModels.indexOf(startShape);
+        int j = catModels.indexOf(target);
+
+        auto s = catModels[i], t = catModels[j];
+
+        auto t1 = thumbs[s], t2 = thumbs[t];
+
+        QLineF linef(this->mapFromItem(t1, t1->boundingRect().center()),
+                     this->mapFromItem(t2, t2->boundingRect().center()));
+
+        double similarity = 1.0 - ((distMat[i][j] - min_val) / (max_val - min_val));
+        similarity = pow(similarity, 3);
+
+        QColor color = ExploreProcess::qtJetColor(similarity);
+        auto line = scene()->addLine(linef, QPen(color, 2));
+
+        line->setParentItem(this);
+        line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);
+        line->setZValue(-1);
+
+        lines[qMakePair(i,j)] = line;
     }
 }

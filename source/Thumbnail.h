@@ -26,6 +26,8 @@ public:
 			points << v0 << v1 << v2;
 			normals << n0 << n1 << n2;
 		}
+        bool isPoints;
+        QBasicMesh() : isPoints(false){}
 	};
 
     QVariantMap data;

@@ -1,5 +1,6 @@
 #include "Thumbnail.h"
 #include <QPainter>
+#include <QGraphicsSceneMouseEvent>
 
 #include "GraphicsView.h"
 #include "Viewer.h"
@@ -212,8 +213,13 @@ Thumbnail::QBasicMesh Thumbnail::buildTetrahedron(float length)
     return m;
 }
 
-void Thumbnail::mousePressEvent(QGraphicsSceneMouseEvent *)
+void Thumbnail::mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
+    if(property("isIgnoreMouse").toBool()){
+        event->ignore();
+        return;
+    }
+
     emit(clicked(this));
 }
 

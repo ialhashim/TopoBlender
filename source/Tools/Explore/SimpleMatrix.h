@@ -835,17 +835,17 @@ namespace smat
 		if(D->rows()!=D->columns())
 		{
 			printf("Input distance matrix to MDS is not square.\n");
-			exit(1);
+			return nullptr;
 		}
 		if(dim<1)
 		{
 			printf("Invalid dimension for MDS.\n");
-			exit(1);
+			return nullptr;
 		}
 		if(iter<1)
 		{
 			printf("Invalid number of iterations for MDS.\n");
-			exit(1);
+			return nullptr;
 		}
 		
 		Matrix<double> * X=NULL;
@@ -869,9 +869,9 @@ namespace smat
 			X->multiplyNumberSelf(0.1*D_mean/(1.0/3.0*sqrt((double)dim))); // before this step, mean distance is 1/3*sqrt(d)
 		}
 		
-		double lr=0.05; // learning rate
-		double r=2; // metric
-		int n=D->rows(); // number of vectors
+		double lr=0.05;		// learning rate
+		double r=2;			// metric
+		int n=D->rows();	// number of vectors
 		
 		
 		Matrix<double> * dh=new Matrix<double>(n,n,0.0);
