@@ -13,7 +13,7 @@ class ExploreLiveView : public QGraphicsObject
 public:
     ExploreLiveView(QGraphicsItem *parent, Document * document);
 
-    QRectF boundingRect() const { return childrenBoundingRect(); }
+    QRectF boundingRect() const { return childrenBoundingRect().united(shapeRect); }
 
     void showBlend(QVariantMap info);
 
@@ -22,6 +22,7 @@ protected:
 
     QVector<Thumbnail::QBasicMesh> meshes;
     QString message;
+    QRectF shapeRect;
 
     QMap< QPair<QString,QString>, QSharedPointer<ExploreProcess::BlendPath> > blendPath;
 

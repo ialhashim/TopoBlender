@@ -18,7 +18,7 @@ class SynthesisManager;
 #include "Thumbnail.h"
 
 namespace ExploreProcess{
-    QPair<QVector3D, QMatrix4x4> defaultCamera(double zoomFactor);
+    QPair<QVector3D, QMatrix4x4> defaultCamera(double zoomFactor, int width = 128, int height = 128);
     Thumbnail::QBasicMesh toBasicMesh (opengp::SurfaceMesh::SurfaceMeshModel * m, QColor color);
     QColor qtJetColor (double v, double vmin = 0.0, double vmax = 1.0);
     Thumbnail * makeThumbnail(QGraphicsItem * parent, Document * document, QString s, QPointF pos);

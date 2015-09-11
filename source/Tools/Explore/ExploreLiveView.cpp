@@ -33,6 +33,8 @@ void ExploreLiveView::showBlend(QVariantMap info)
     path->alpha = alpha;
     path->prepare(document);
 
+    this->shapeRect = QRectF(0,0,128,128);
+
     meshes = path->blend();
 }
 

@@ -35,8 +35,8 @@ SOURCES +=  main.cpp\
             Tools/StructureTransfer/StructureTransferView.cpp \
 # Explore tool
             Tools/Explore/Explore.cpp \
-    Tools/Explore/ExploreProcess.cpp \
-    Tools/Explore/ExploreLiveView.cpp
+            Tools/Explore/ExploreProcess.cpp \
+            Tools/Explore/ExploreLiveView.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -69,8 +69,8 @@ HEADERS  += mainwindow.h \
             Tools/StructureTransfer/StructureTransferView.h \
 # Explore tool
             Tools/Explore/Explore.h \
-    Tools/Explore/ExploreProcess.h \
-    Tools/Explore/ExploreLiveView.h
+            Tools/Explore/ExploreProcess.h \
+            Tools/Explore/ExploreLiveView.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \

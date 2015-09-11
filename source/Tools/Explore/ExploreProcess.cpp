@@ -17,7 +17,7 @@ using namespace cinekine;
 #include "Scheduler.h"
 #include "SynthesisManager.h"
 
-QPair<QVector3D,QMatrix4x4> ExploreProcess::defaultCamera(double zoomFactor)
+QPair<QVector3D,QMatrix4x4> ExploreProcess::defaultCamera(double zoomFactor, int width, int height)
 {
     // Camera target and initial position
     auto camera = new Eigen::Camera();
@@ -38,7 +38,7 @@ QPair<QVector3D,QMatrix4x4> ExploreProcess::defaultCamera(double zoomFactor)
     auto cameraPos = QVector3D(cp[0], cp[1], cp[2]);
 
     // Camera settings
-    camera->setViewport(128, 128);
+    camera->setViewport(width, height);
     Eigen::Matrix4f p = camera->projectionMatrix();
     Eigen::Matrix4f v = camera->viewMatrix().matrix();
     p.transposeInPlace();
@@ -254,6 +254,21 @@ QVector<Thumbnail::QBasicMesh> ExploreProcess::BlendPath::blend()
 {
     QVector<Thumbnail::QBasicMesh> parts;
     if(!isReady) return parts;
+
+    auto activeGraph = scheduler->allGraphs[alpha * (scheduler->allGraphs.size() - 1)];
+    auto all_parts = synthManager->constructShapeGeometry(activeGraph);
+
+    for(auto part : all_parts)
+    {
+        Thumbnail::QBasicMesh mesh;
+
+        mesh.points = part.points;
+        mesh.normals = part.normals;
+        mesh.isPoints = part.isPoints;
+        mesh.color = part.color;
+
+        parts << mesh;
+    }
 
     return parts;
 }
