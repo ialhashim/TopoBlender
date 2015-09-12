@@ -230,7 +230,8 @@ void ExploreProcess::BlendPath::prepare(Document *document)
     int numSamples = 100;
     int reconLevel = 4;
 
-    int LOD = 0;
+    int LOD = 1;
+
     switch (LOD){
         case 0: numSamples = 10; reconLevel = 4; break;
         case 1: numSamples = 100; reconLevel = 4; break;

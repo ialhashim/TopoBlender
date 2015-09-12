@@ -185,8 +185,8 @@ void Explore::init()
 
             // Live synthesis
             liveView = new ExploreLiveView(this, document);
-            auto ritem = new QGraphicsRectItem(QRectF(-5,-5,10,10), liveView);
-            ritem->setPen(QPen(Qt::white, 3));
+            //auto ritem = new QGraphicsRectItem(QRectF(-5,-5,10,10), liveView);
+            //ritem->setPen(QPen(Qt::white, 3));
         });
     }
 }

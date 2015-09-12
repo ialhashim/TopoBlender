@@ -13,7 +13,7 @@ class ExploreLiveView : public QGraphicsObject
 public:
     ExploreLiveView(QGraphicsItem *parent, Document * document);
 
-    QRectF boundingRect() const { return childrenBoundingRect().united(shapeRect); }
+    QRectF boundingRect() const { return childrenBoundingRect(); }
 
     void showBlend(QVariantMap info);
 
