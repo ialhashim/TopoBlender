@@ -17,6 +17,8 @@ using namespace cinekine;
 #include "Scheduler.h"
 #include "SynthesisManager.h"
 
+#include "ResolveCorrespondence.h"
+
 QPair<QVector3D,QMatrix4x4> ExploreProcess::defaultCamera(double zoomFactor, int width, int height)
 {
     // Camera target and initial position
@@ -196,28 +198,27 @@ void ExploreProcess::BlendPath::prepare(Document *document)
     auto cacheTarget = document->cacheModel(target);
     if(cacheSource == nullptr || cacheTarget == nullptr) return;
 
-    auto source = QSharedPointer<Structure::Graph>(cacheSource->cloneAsShapeGraph());
-    auto target = QSharedPointer<Structure::Graph>(cacheTarget->cloneAsShapeGraph());
+    auto sourceShape = QSharedPointer<Structure::Graph>(cacheSource->cloneAsShapeGraph());
+    auto targetShape = QSharedPointer<Structure::Graph>(cacheTarget->cloneAsShapeGraph());
 
-    gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));
+    gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(sourceShape.data(), targetShape.data()));
 
     // Apply computed correspondence
-    if (false) // enable/disable auto correspondence
     {
-        for (auto n : source->nodes)
-        {
-            QString sid = n->id;
+        QVector<QPair<QString, QString> > all_pairs;
 
-            if (document->datasetCorr[this->source][sid][this->target].empty())
+        for(auto n : sourceShape->nodes)
+        {
+            if (!document->datasetCorr[source][n->id][target].empty())
             {
-                gcorr->setNonCorresSource(sid);
-            }
-            else
-            {
-                auto tid = document->datasetCorr[this->source][sid][this->target].front();
-                gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
+                for(auto nj : document->datasetCorr[source][n->id][target])
+                {
+                    all_pairs << qMakePair(n->id, nj);
+                }
             }
         }
+
+        ResolveCorrespondence(sourceShape.data(), targetShape.data(), all_pairs, gcorr.data());
     }
 
     gcorr->computeCorrespondences();

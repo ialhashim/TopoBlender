@@ -256,7 +256,8 @@ void Explore::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         startShape = catModels[best.first];
         targetShape = catModels[best.second];
 
-        alpha = (bestLine->line().p1() - proj).manhattanLength() / bestLine->line().length();
+        alpha = std::min(1.0, std::max(0.0, (bestLine->line().p1() - proj).manhattanLength() / bestLine->line().length()));
+        //((GraphicsScene*)scene())->displayMessage(QString("%1").arg(alpha));
     }
 
     // Do blend

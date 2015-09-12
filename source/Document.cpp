@@ -224,30 +224,81 @@ void Document::sayGlobalSettingsChanged()
 
 void Document::savePairwise(QString filename)
 {
-    QFile file(filename);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+	// Pair-wise distances
+	{
+		QFile file(filename);
+		if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+		QTextStream out(&file);
+		for (auto s : datasetMatching.keys())
+			for (auto t : datasetMatching[s].keys())
+				out << s << " " << t << " " << datasetMatching[s][t]["min_cost"].toDouble() << "\n";
+	}
 
-    QTextStream out(&file);
+	// Full dataset matches
+	{
+		QFile file(filename + ".match");
+		if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+		QTextStream out(&file);
+		for (auto s : datasetMatching.keys()){
+			for (auto t : datasetMatching[s].keys()){
+				QStringList matches;
+				QVector< QPair<QString, QString> > mp = datasetMatching[s][t]["matching_pairs"].value< QVector< QPair<QString, QString> > >();
+                for (auto p : mp)
+                {
+                    if(datasetMatching[s][t]["isReversed"].toBool()) std::swap(p.first, p.second);
 
-    for (auto s : datasetMatching.keys())
-        for (auto t : datasetMatching[s].keys())
-            out << s << " " << t << " " << datasetMatching[s][t]["min_cost"].toDouble() << "\n";
+					matches << QString("%1,%2").arg(p.first).arg(p.second);
+
+					datasetCorr[s][p.first][t] << p.second;
+					datasetCorr[t][p.second][s] << p.first;
+				}
+				out << s << " " << t << " " << matches.join("|") << "\n";
+			}
+		}
+	}
 }
 
 void Document::loadPairwise(QString filename)
 {
-    QFile file(filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+	// Pair-wise distances
+	{
+		QFile file(filename);
+		if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
 
-    QTextStream in(&file);
-    auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+		QTextStream in(&file);
+		auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
 
-    for (auto line : lines){
-        auto item = line.split(QRegExp("[ \t]"), QString::SkipEmptyParts);
-        if (item.size() != 3) continue;
-        datasetMatching[item[0]][item[1]]["min_cost"] = item[2].toDouble();
-        datasetMatching[item[1]][item[0]]["min_cost"] = item[2].toDouble();
-    }
+		for (auto line : lines){
+			auto item = line.split(QRegExp("[ \t]"), QString::SkipEmptyParts);
+			if (item.size() != 3) continue;
+			datasetMatching[item[0]][item[1]]["min_cost"] = item[2].toDouble();
+			datasetMatching[item[1]][item[0]]["min_cost"] = item[2].toDouble();
+		}
+	}
+    
+	// Full dataset matches
+	{
+		QFile file(filename + ".match");
+		if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+		QTextStream in(&file);
+		auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+
+		for (auto line : lines){
+			auto l = line.split(" ", QString::SkipEmptyParts);
+			auto s = l.at(0);
+			auto t = l.at(1);
+			auto matchesPart = l.at(2).split("|", QString::SkipEmptyParts);
+
+			for (auto txtPair : matchesPart)
+			{
+				auto p = txtPair.split(",", QString::SkipEmptyParts);
+
+				datasetCorr[s][p.front()][t] << p.back();
+				datasetCorr[t][p.back()][s] << p.front();
+			}
+		}
+	}
 }
 
 void Document::saveDatasetCorr(QString filename)

@@ -2,6 +2,9 @@ QT          += core gui opengl widgets xml
 
 TARGET      = TopoBlender
 TEMPLATE    = app
+DESTDIR     = $$PWD/../bin
+
+CONFIG(debug, debug|release) {TARGET = TopoBlenderD}
 
 INCLUDEPATH += . external
 
@@ -36,7 +39,8 @@ SOURCES +=  main.cpp\
 # Explore tool
             Tools/Explore/Explore.cpp \
             Tools/Explore/ExploreProcess.cpp \
-            Tools/Explore/ExploreLiveView.cpp
+            Tools/Explore/ExploreLiveView.cpp \
+    ResolveCorrespondence.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -70,7 +74,8 @@ HEADERS  += mainwindow.h \
 # Explore tool
             Tools/Explore/Explore.h \
             Tools/Explore/ExploreProcess.h \
-            Tools/Explore/ExploreLiveView.h
+            Tools/Explore/ExploreLiveView.h \
+    ResolveCorrespondence.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \
@@ -142,6 +147,9 @@ INCLUDEPATH += ../../GeoTopo/source/NURBS
 ### Other libraries
 # SDF library
 INCLUDEPATH += external/SDFGen
+
+# Embree
+LIBS += -L$$PWD/Tools/Explore
 
 RESOURCES += media/TopoBlender.qrc
 win32:RC_FILE = media/TopoBlender.rc

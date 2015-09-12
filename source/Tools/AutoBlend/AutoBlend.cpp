@@ -9,6 +9,8 @@
 #include "Gallery.h"
 #include "Thumbnail.h"
 
+#include <QMainWindow>
+#include <QMessageBox>
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
 
@@ -16,6 +18,8 @@
 #include "TopoBlender.h"
 #include "Scheduler.h"
 #include "SynthesisManager.h"
+
+#include "ResolveCorrespondence.h"
 
 auto toBasicMesh = [&](opengp::SurfaceMesh::SurfaceMeshModel * m, QColor color){
 	Thumbnail::QBasicMesh mesh;
@@ -189,22 +193,22 @@ void AutoBlend::doBlend()
 			auto gcorr = QSharedPointer<GraphCorresponder>(new GraphCorresponder(source.data(), target.data()));
 
 			// Apply computed correspondence
-			if (false) // enable/disable auto correspondence
+            //if (false) // enable/disable auto correspondence
 			{
-				for (auto n : source->nodes)
-				{
-					QString sid = n->id;
+                QVector<QPair<QString, QString> > all_pairs;
 
-					if (document->datasetCorr[sourceName][sid][targetName].empty())
-					{
-						gcorr->setNonCorresSource(sid);
-					}
-					else
-					{
-						auto tid = document->datasetCorr[sourceName][sid][targetName].front();
-						gcorr->addLandmarks(QVector<QString>() << sid, QVector<QString>() << tid);
-					}
-				}
+                for(auto n : source->nodes)
+                {
+                    if (!document->datasetCorr[sourceName][n->id][targetName].empty())
+                    {
+                        for(auto nj : document->datasetCorr[sourceName][n->id][targetName])
+                        {
+                            all_pairs << qMakePair(n->id, nj);
+                        }
+                    }
+                }
+
+                ResolveCorrespondence(source.data(), target.data(), all_pairs, gcorr.data());
 			}
 
             gcorr->computeCorrespondences();
@@ -224,6 +228,21 @@ void AutoBlend::doBlend()
                 case 2: numSamples = 10000; reconLevel = 7; break;
             }
 
+            /// Visualize schedule:
+            if (false)
+            {
+                blender->parentWidget = new QMainWindow();
+                blender->parentWidget->show();
+                blender->setupUI();
+
+                QStringList corr;
+                for(auto n : scheduler->activeGraph->nodes){
+                    corr << QString("%1-%2").arg(n->id, n->property["correspond"].toString());
+                }
+
+                QMessageBox::information(blender->parentWidget, "Correspondence", corr.join("\n"));
+            }
+
             auto synthManager = QSharedPointer<SynthesisManager>(new SynthesisManager(gcorr.data(), scheduler.data(), blender.data(), numSamples));
             synthManager->genSynData();
 
@@ -236,7 +255,7 @@ void AutoBlend::doBlend()
 
             for (int i = 0; i < numResults; i++)
             {
-                double a = ((double(i) / (numResults - 1)) * 0.6) + 0.2;
+                double a = ((double(i) / (numResults - 1)) * 0.9) + 0.05;
                 auto blendedModel = scheduler->allGraphs[a * (scheduler->allGraphs.size() - 1)];
 
                 synthManager->renderGraph(*blendedModel, "", false, reconLevel );
