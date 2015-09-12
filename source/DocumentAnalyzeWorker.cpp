@@ -29,7 +29,7 @@ void DocumentAnalyzeWorker::processAllPairWise()
         return;
     }
 
-    int k = 2; // search parameter
+    int k = 4; // search parameter
 
     int numPairwise = ((catModels.size()-1) * catModels.size()) / 2.0;
     int c = 0;
@@ -145,7 +145,7 @@ void DocumentAnalyzeWorker::processShapeDataset()
 	}
 
     // Compute correspondence with respect to active shape
-    int k = 2; // search parameter
+    int k = 4; // search parameter
 
     auto cachedShapeA = document->getModel(sourceName);
     for(int i = 0; i < catModels.size(); i++)
