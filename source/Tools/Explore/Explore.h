@@ -29,6 +29,7 @@ protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *);
     void mousePressEvent(QGraphicsSceneMouseEvent *);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
+    void keyPressEvent(QKeyEvent *event);
 
     QString startShape, targetShape;
     double alpha;

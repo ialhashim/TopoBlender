@@ -70,9 +70,16 @@ Thumbnail::QBasicMesh ExploreProcess::toBasicMesh (opengp::SurfaceMesh::SurfaceM
     return mesh;
 }
 
-Thumbnail * ExploreProcess::makeThumbnail(QGraphicsItem * parent, Document * document, QString s, QPointF pos)
+Thumbnail * ExploreProcess::makeThumbnail(QGraphicsItem * parent, Document * document, QString s, QPointF pos, bool hqRendering)
 {
-    QRectF thumbRect(0, 0, 150, 150);
+    int defaultWidth = 150;
+    QRectF thumbRect(0, 0, defaultWidth, defaultWidth);
+
+    if(hqRendering)
+    {
+        thumbRect.setWidth(600);
+        thumbRect.setHeight(600);
+    }
 
     auto defaultCam = ExploreProcess::defaultCamera(document->extent().length());
     auto cameraPos = defaultCam.first;
@@ -83,6 +90,9 @@ Thumbnail * ExploreProcess::makeThumbnail(QGraphicsItem * parent, Document * doc
     t->setCaption("");
     t->setMesh();
     t->setCamera(cameraPos, cameraMatrix);
+
+    double scale = defaultWidth / thumbRect.width();
+    t->setScale(scale);
 
     QVariantMap data;
     data["shape"] = s;
@@ -97,7 +107,7 @@ Thumbnail * ExploreProcess::makeThumbnail(QGraphicsItem * parent, Document * doc
         t->addAuxMesh(toBasicMesh(m->getMesh(n->id), n->vis_property["color"].value<QColor>()));
     }
 
-    t->setPos(pos - thumbRect.center());
+    t->setPos(pos - QPointF(defaultWidth * 0.5, defaultWidth * 0.5));
 
     return t;
 }

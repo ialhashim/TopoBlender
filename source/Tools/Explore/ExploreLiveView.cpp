@@ -6,10 +6,14 @@
 #include "Document.h"
 
 #include "Viewer.h"
+#include <QOpenGLFramebufferObject>
+#include <QOffscreenSurface>
+#include <QOpenGLFunctions>
 
 #include "ExploreProcess.h"
 
-ExploreLiveView::ExploreLiveView(QGraphicsItem *parent, Document *document) : QGraphicsObject(parent), document(document)
+ExploreLiveView::ExploreLiveView(QGraphicsItem *parent, Document *document) : QGraphicsObject(parent),
+    document(document), isReady(false), isCacheImage(false), cacheImageSize(512)
 {
 	this->setFlag(QGraphicsItem::ItemIsSelectable);
 	this->setFlag(QGraphicsItem::ItemIsMovable);
@@ -17,6 +21,8 @@ ExploreLiveView::ExploreLiveView(QGraphicsItem *parent, Document *document) : QG
 
 void ExploreLiveView::showBlend(QVariantMap info)
 {
+    this->isReady = false;
+
 	QString source = info["source"].toString();
 	QString target = info["target"].toString();
 	double alpha = info["alpha"].toDouble();
@@ -35,54 +41,131 @@ void ExploreLiveView::showBlend(QVariantMap info)
 
 	this->shapeRect = QRectF(0, 0, 128, 128);
 
-	meshes = path->blend();
+    meshes = path->blend();
+
+    if(info["hqRendering"].toBool())
+    {
+        this->isCacheImage = true;
+        this->cachedImage = QImage();
+    }
+
+    this->isReady = true;
 }
 
 void ExploreLiveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget * widget)
 {
+    if(!isReady) return;
+
 	prePaint(painter);
 
 	postPaint(painter);
 
 	auto glwidget = (Viewer*)widget;
-	if (glwidget && meshes.size())
+    if (glwidget && meshes.size())
 	{
 		QRectF parentRect = parentItem()->sceneBoundingRect();
 
-		painter->beginNativePainting();
+        if (isCacheImage && cachedImage.isNull())
+        {
+            QOpenGLContext context;
+            context.setShareContext(glwidget->context());
+            context.setFormat(glwidget->format());
+            context.create();
 
-		// Draw mesh
-		auto r = shapeRect;
-		r.moveCenter(this->mapToScene(boundingRect().center()));
+            QOffscreenSurface m_offscreenSurface;
+            m_offscreenSurface.setFormat(context.format());
+            m_offscreenSurface.create();
 
-		auto v = scene()->views().first();
-		QPoint viewDelta = v->mapFromScene(r.topLeft());
-		if (viewDelta.manhattanLength() > 5) r.moveTopLeft(viewDelta);
+            context.makeCurrent(&m_offscreenSurface);
 
-		auto camera = ExploreProcess::defaultCamera(document->extent().length());
+            QOpenGLFramebufferObjectFormat fboformat;
+            fboformat.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+            QOpenGLFramebufferObject renderFbo(cacheImageSize*1.5, cacheImageSize, fboformat);
+            renderFbo.bind();
 
-		glwidget->eyePos = camera.first;
-		glwidget->pvm = camera.second;
-		glwidget->glViewport(r.left(), v->height() - r.height() - r.top(), r.width(), r.height());
+            glwidget->glEnable(GL_DEPTH_TEST);
+            glwidget->glEnable(GL_BLEND);
+            glwidget->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glwidget->glCullFace(GL_BACK);
 
-		// Clipping OpenGL
-		glwidget->glEnable(GL_SCISSOR_TEST);
-		glwidget->glScissor(parentRect.x(), v->height() - parentRect.height() - parentRect.top(), parentRect.width(), parentRect.height());
+            glwidget->glClearColor(0,0,0,0);
+            glwidget->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glwidget->glViewport(0, 0, cacheImageSize*1.5, cacheImageSize);
 
-		glwidget->glClear(GL_DEPTH_BUFFER_BIT);
+            glwidget->glPointSize(10);
 
-		// Draw aux meshes
-		for (auto mesh : meshes)
-		{
-			if (mesh.isPoints)
-				glwidget->drawOrientedPoints(mesh.points, mesh.normals, mesh.color, glwidget->pvm);
-			else
-				glwidget->drawTriangles(mesh.color, mesh.points, mesh.normals, glwidget->pvm);
-		}
+            // Draw aux meshes
+            for (auto mesh : meshes)
+            {
+                if (mesh.isPoints)
+                    glwidget->drawOrientedPoints(mesh.points, mesh.normals, mesh.color, glwidget->pvm);
+                else
+                    glwidget->drawTriangles(mesh.color, mesh.points, mesh.normals, glwidget->pvm);
+            }
 
-		glwidget->glDisable(GL_SCISSOR_TEST);
+            glwidget->glDisable(GL_DEPTH_TEST);
+            glwidget->glFlush();
 
-		painter->endNativePainting();
+            renderFbo.release();
+
+            cachedImage = renderFbo.toImage();
+            isReady = true;
+
+            // Thanks for sharing!
+            glwidget->makeCurrent();
+        }
+
+        // Draw as image
+        if(isCacheImage)
+        {
+            int w = shapeRect.width();
+            painter->drawImage(w * -0.5, w * -0.5, cachedImage.scaledToWidth(w));
+        }
+
+        if(!isCacheImage)
+        {
+            auto r = shapeRect;
+
+            // scale view
+            double s = 1.5;
+            r.setWidth(r.width() * s);
+            r.setHeight(r.height() * s);
+
+            r.moveCenter(this->mapToScene(boundingRect().center()));
+
+            painter->beginNativePainting();
+
+            auto v = scene()->views().first();
+            QPoint viewDelta = v->mapFromScene(r.topLeft());
+            if (viewDelta.manhattanLength() > 5) r.moveTopLeft(viewDelta);
+
+            auto camera = ExploreProcess::defaultCamera(document->extent().length());
+
+            glwidget->eyePos = camera.first;
+            glwidget->pvm = camera.second;
+            glwidget->glViewport(r.left(), v->height() - r.height() - r.top(), r.width(), r.height());
+
+            // Clipping OpenGL
+            glwidget->glEnable(GL_SCISSOR_TEST);
+            glwidget->glScissor(parentRect.x(), v->height() - parentRect.height() - parentRect.top(), parentRect.width(), parentRect.height());
+
+            glwidget->glClear(GL_DEPTH_BUFFER_BIT);
+
+            glwidget->glPointSize(2);
+
+            // Draw aux meshes
+            for (auto mesh : meshes)
+            {
+                if (mesh.isPoints)
+                    glwidget->drawOrientedPoints(mesh.points, mesh.normals, mesh.color, glwidget->pvm);
+                else
+                    glwidget->drawTriangles(mesh.color, mesh.points, mesh.normals, glwidget->pvm);
+            }
+
+            glwidget->glDisable(GL_SCISSOR_TEST);
+
+            painter->endNativePainting();
+        }
 	}
 }
 

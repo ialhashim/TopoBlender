@@ -17,6 +17,11 @@ public:
 
     void showBlend(QVariantMap info);
 
+    bool isReady;
+    bool isCacheImage;
+    QImage cachedImage;
+    int cacheImageSize;
+
 protected:
     Document * document;
 

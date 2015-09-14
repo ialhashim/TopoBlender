@@ -19,6 +19,7 @@
 
 ManualBlendView::ManualBlendView(Document *document, QGraphicsItem * parent) : QGraphicsObject(parent), document(document), gallery(nullptr)
 {
+    // Enable keyboard
     this->setFlags(QGraphicsItem::ItemIsFocusable);
 	 
     // Create camera & trackball

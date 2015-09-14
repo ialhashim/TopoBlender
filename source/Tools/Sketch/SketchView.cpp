@@ -23,6 +23,7 @@ SketchView::SketchView(Document * document, QGraphicsItem *parent, SketchViewTyp
 QGraphicsObject(parent), rect(QRect(0, 0, 100, 100)), type(type), camera(nullptr), trackball(nullptr),
 leftButtonDown(false), rightButtonDown(false), middleButtonDown(false), document(document), sketchOp(SKETCH_NONE)
 {
+    // Enable keyboard
     this->setFlags(QGraphicsItem::ItemIsFocusable);
 
 	camera = new Eigen::Camera();

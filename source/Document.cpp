@@ -299,6 +299,31 @@ void Document::loadPairwise(QString filename)
 			}
 		}
 	}
+
+    // Load clustering file if any
+    {
+        QFile file(filename + ".cluster");
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+        QTextStream in(&file);
+        auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+
+        QVector<QColor> cluster_colors;
+        for(int c = 0; c < lines.size(); c++) cluster_colors << starlab::qRandomColor2();
+
+        for (int i = 0; i < lines.size(); i++)
+        {
+            auto line = lines[i];
+
+            auto l = line.split("\t", QString::SkipEmptyParts);
+
+            for(auto shapePart : l)
+            {
+                auto p = shapePart.split(":");
+                cacheModel(p.front())->setColorFor(p.back(), cluster_colors[i]);
+            }
+        }
+    }
 }
 
 void Document::saveDatasetCorr(QString filename)

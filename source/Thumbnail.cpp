@@ -181,6 +181,53 @@ void Thumbnail::postPaint(QPainter * painter, QWidget *)
     }
 }
 
+QImage Thumbnail::applyEffectToImage(QGraphicsEffect *effect, int extent)
+{
+    auto src = img;
+
+    if(src.isNull()) return src;   //No need to do anything else!
+    if(!effect) return src;        //No need to do anything else!
+    QGraphicsScene scene;
+    QGraphicsPixmapItem item;
+    item.setPixmap(QPixmap::fromImage(src));
+    item.setGraphicsEffect(effect);
+    scene.addItem(&item);
+    QImage res(src.size()+QSize(extent*2, extent*2), QImage::Format_ARGB32);
+    res.fill(Qt::transparent);
+    QPainter ptr(&res);
+    scene.render(&ptr, QRectF(), QRectF( -extent, -extent, src.width()+extent*2, src.height()+extent*2 ) );
+
+    return res;
+}
+
+void Thumbnail::applyEffectToLocalImage(QGraphicsEffect *effect, int extent)
+{
+    auto src = img;
+
+    if(src.isNull()) return;   //No need to do anything else!
+    if(!effect) return;        //No need to do anything else!
+    QGraphicsScene scene;
+    QGraphicsPixmapItem item;
+    item.setPixmap(QPixmap::fromImage(src));
+    item.setGraphicsEffect(effect);
+    scene.addItem(&item);
+    QImage res(src.size()+QSize(extent*2, extent*2), QImage::Format_ARGB32);
+    res.fill(Qt::transparent);
+    QPainter ptr(&res);
+    scene.render(&ptr, QRectF(), QRectF( -extent, -extent, src.width()+extent*2, src.height()+extent*2 ) );
+
+    img = res;
+}
+
+void Thumbnail::saveImage(QString filename)
+{
+    int dpm = 300 / 0.0254; // ~300 DPI
+    img.setDotsPerMeterX(dpm);
+    img.setDotsPerMeterY(dpm);
+
+    img.save(filename);
+}
+
 Thumbnail::QBasicMesh Thumbnail::buildTetrahedron(float length)
 {
     Thumbnail::QBasicMesh m;

@@ -10,16 +10,21 @@
 
 #include "ExploreProcess.h"
 
+#include <QGraphicsDropShadowEffect>
+
 Explore::Explore(Document *document, const QRectF &bounds) : Tool(document), liveView(nullptr)
 {
+    // Enable keyboard
+    this->setFlags(QGraphicsItem::ItemIsFocusable);
+
     setBounds(bounds);
     setObjectName("explore");
 }
 
 void Explore::init()
 {
-	//setProperty("hasBackground", true);
-	//setProperty("backgroundColor", QColor(0,0,0,50));
+    //setProperty("hasBackground", true);
+    //setProperty("backgroundColor", QColor(255,255,255,255));
 
     // Add widget
     auto toolsWidgetContainer = new QWidget();
@@ -112,7 +117,7 @@ void Explore::init()
 
                 auto s = catModels[i];
 
-                thumbs[s] = ExploreProcess::makeThumbnail(this, document, s, pos);
+                thumbs[s] = ExploreProcess::makeThumbnail(this, document, s, pos, widget->hqRendering->isChecked());
 
                 thumbs[s]->setProperty("isIgnoreMouse", true);
             }
@@ -167,8 +172,9 @@ void Explore::init()
 
 							if (test1 || test2 || test3)
                             {
-                                QColor color = ExploreProcess::qtJetColor(similarity);
-								color.setAlphaF(0.5 * similarity);
+                                //QColor color = ExploreProcess::qtJetColor(similarity);
+                                QColor color = QColor::fromHsl(0, 128, 255 * similarity, 255);
+                                color.setAlphaF(0.75 * similarity);
 
 								auto line = scene()->addLine(linef, QPen(color, similarity * 3));
 
@@ -264,6 +270,7 @@ void Explore::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
     info["source"].setValue(startShape);
     info["target"].setValue(targetShape);
     info["alpha"].setValue(alpha);
+    info["hqRendering"].setValue(widget->hqRendering->isChecked());
     liveView->showBlend( info );
 }
 
@@ -294,16 +301,6 @@ void Explore::mousePressEvent(QGraphicsSceneMouseEvent *  event)
 void Explore::mouseReleaseEvent(QGraphicsSceneMouseEvent *  event)
 {
     if(liveView == nullptr || thumbs.empty()) return;
-
-    if(event->button() == Qt::LeftButton)
-    {
-        QVariantMap info;
-        info["source"].setValue(startShape);
-        info["target"].setValue(targetShape);
-        info["alpha"].setValue(alpha);
-        liveView->showBlend(info);
-        return;
-    }
 
     if(!(event->button() == Qt::RightButton)) return;
 
@@ -349,5 +346,108 @@ void Explore::mouseReleaseEvent(QGraphicsSceneMouseEvent *  event)
         line->setZValue(-1);
 
         lines[qMakePair(i,j)] = line;
+    }
+}
+
+void Explore::keyPressEvent(QKeyEvent *event)
+{
+    if(event->key() == Qt::Key_F)
+    {
+        QStringList svg;
+
+        int width = this->bounds.width();
+        int height = this->bounds.height();
+
+        auto svgHeader = QString("<svg version='1.1' width='%1' height='%2'"
+                                 " xmlns='http://www.w3.org/2000/svg'"
+                                 " xmlns:xlink='http://www.w3.org/1999/xlink'>").arg(width).arg(height);
+        auto svgFooter = QString("</svg>");
+
+        svg << svgHeader;
+
+        // Build SVG
+        {
+            // Solid background
+            {
+                svg << QString("\t<rect width=\"100%\" height=\"100%\" fill=\"%1\" />")
+                       .arg(QColor(50,50,50).name());
+            }
+
+            // output edges
+            for(auto l : lines)
+            {
+                auto line = l->line();
+
+                QString colorName = QString("rgba(%1,%2,%3,%4)")
+                        .arg(l->pen().color().red())
+                        .arg(l->pen().color().green())
+                        .arg(l->pen().color().blue())
+                        .arg(l->pen().color().alphaF());
+
+                svg << QString("\t<line x1='%1' y1='%2' x2='%3' y2='%4' stroke='%5' stroke-width='2'/>")
+                        .arg(line.p1().x()).arg(line.p1().y())
+                        .arg(line.p2().x()).arg(line.p2().y())
+                        .arg(colorName);
+            }
+
+            // output thumbnails
+            int width = 0;
+            for(auto t : thumbs)
+            {
+                QGraphicsDropShadowEffect *e = new QGraphicsDropShadowEffect;
+                e->setColor(QColor(40,40,40,180));
+                e->setOffset(0,10);
+                e->setBlurRadius(40);
+
+                auto img = t->applyEffectToImage(e);
+
+                auto filename = "images/" + t->data["shape"].toString() + ".png";
+                img.save(filename);
+
+                auto x = t->pos().x(), y = t->pos().y();
+                width = t->boundingRect().width() * t->scale(),
+                        height = t->boundingRect().height() * t->scale();
+
+                svg << QString("\t<image xlink:href='%5' x='%1' y='%2' height='%3px' width='%4px'/>")
+                       .arg(x).arg(y)
+                       .arg(width).arg(height)
+                       .arg(filename);
+            }
+
+            // output live preview if ready
+            if(liveView && liveView->isReady)
+            {
+                auto filename = "images/liveView.png";
+
+                int dpm = 300 / 0.0254; // ~300 DPI
+                liveView->cachedImage.setDotsPerMeterX(dpm);
+                liveView->cachedImage.setDotsPerMeterY(dpm);
+                liveView->cachedImage.save(filename);
+
+                auto x = liveView->pos().x(), y = liveView->pos().y();
+
+                svg << QString("\t<radialGradient id='gradient'>"
+                        "<stop offset='0%'   style='stop-color: rgba(0,0,0,0.75)' />"
+                        "<stop offset='75%'   style='stop-color: rgba(0,0,0,0.75)' />"
+                        "<stop offset='100%' style='stop-color: transparent' />"
+                        "</radialGradient>"
+                        "<circle cx='%1' cy='%2' r='%3' style='fill:url(#gradient)' />"
+                        "<circle cx='%1' cy='%2' r='%3' style='fill:transparent' stroke='rgba(255,255,255,0.25)' stroke-width='1' />")
+                        .arg(x).arg(y).arg(150 * 0.5);
+
+                svg << QString("\t<image xlink:href='%5' x='%1' y='%2' height='%3px' width='%4px'/>")
+                       .arg(x - (150 * 0.5)).arg(y - (150 * 0.5))
+                       .arg(150).arg(150)
+                       .arg(filename);
+            }
+        }
+
+        svg << svgFooter;
+
+        // Save snapshot as SVG
+        QFile file("snapshot.svg");
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+        QTextStream out(&file);
+        out << svg.join("\n");
     }
 }

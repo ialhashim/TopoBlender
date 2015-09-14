@@ -49,6 +49,10 @@ public:
 
 	void addAuxMesh(QBasicMesh auxMesh){ auxMeshes << auxMesh; }
 
+    void saveImage(QString filename);
+    QImage applyEffectToImage(QGraphicsEffect *effect, int extent = 0);
+    void applyEffectToLocalImage(QGraphicsEffect *effect, int extent);
+
 public:
     static QBasicMesh buildTetrahedron(float length);
 
