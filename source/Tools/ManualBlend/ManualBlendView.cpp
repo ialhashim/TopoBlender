@@ -17,6 +17,8 @@
 #include <QSlider>
 #include <QPushButton>
 
+Q_DECLARE_METATYPE(Eigen::Vector3f)
+
 ManualBlendView::ManualBlendView(Document *document, QGraphicsItem * parent) : QGraphicsObject(parent), document(document), gallery(nullptr)
 {
     // Enable keyboard
@@ -161,6 +163,17 @@ void ManualBlendView::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
         trackball->track(Eigen::Vector2i(mouseMoveCursorPos.x(), mouseMoveCursorPos.y()));
     }
 
+    if(middleButtonDown)
+    {
+        auto delta = mouseMoveCursorPos - buttonDownCursorPos;
+
+        Eigen::Vector3f up = camera->up() * 0.001f * delta.y();
+        Eigen::Vector3f right = camera->right() * 0.001f * delta.x();
+        Eigen::Vector3f d = up + right;
+
+        camera->setPosition(property("cameraPos").value<Eigen::Vector3f>() - d);
+    }
+
     scene()->update(sceneBoundingRect());
 }
 
@@ -208,6 +221,11 @@ void ManualBlendView::mousePressEvent(QGraphicsSceneMouseEvent * event)
 		}
 	}
 
+    if(middleButtonDown)
+    {
+        setProperty("cameraPos", QVariant::fromValue(camera->position()));
+    }
+
     scene()->update(sceneBoundingRect());
 }
 
@@ -249,23 +267,63 @@ void ManualBlendView::suggestParts(QPointF galleryPos)
 
 	// Create gallery of suggestions as thumbnails
 	int numCol = 3, numRow = 2;
-	QRectF thumbRect(0, 0, 128, 128);
+    QRectF thumbRect(0, 0, 160, 160);
 	QRectF galleryRect(0, 0, thumbRect.width() * numCol, thumbRect.height() * numRow);
 	
 	if (gallery) gallery->deleteLater();
     gallery = new Gallery(this, galleryRect, thumbRect);
 
 	// View settings
-	camera->setViewport(thumbRect.width(), thumbRect.height()); // modify
-	Eigen::Matrix4f p = camera->projectionMatrix();
-	Eigen::Matrix4f v = camera->viewMatrix().matrix();
-	p.transposeInPlace();v.transposeInPlace();
-	QMatrix4x4 viewMatrix(v.data());
-	QMatrix4x4 projectionMatrix(p.data());
-	auto eyePos = camera->position();
-	QMatrix4x4 thumb_pvm = projectionMatrix * viewMatrix;
-	QVector3D thumb_eye = QVector3D(eyePos[0], eyePos[1], eyePos[2]);
-	camera->setViewport(rect.width(), rect.height()); // restore
+    QMatrix4x4 thumb_pvm;
+    QVector3D thumb_eye;
+
+    if(false)
+    {
+        camera->setViewport(thumbRect.width(), thumbRect.height()); // modify
+        Eigen::Matrix4f p = camera->projectionMatrix();
+        Eigen::Matrix4f v = camera->viewMatrix().matrix();
+        p.transposeInPlace();v.transposeInPlace();
+        QMatrix4x4 viewMatrix(v.data());
+        QMatrix4x4 projectionMatrix(p.data());
+        auto eyePos = camera->position();
+        thumb_pvm = projectionMatrix * viewMatrix;
+        thumb_eye = QVector3D(eyePos[0], eyePos[1], eyePos[2]);
+        camera->setViewport(rect.width(), rect.height()); // restore
+    }
+    else
+    {
+        // Default view angle
+        {
+            // Camera target and initial position
+            auto camera = new Eigen::Camera();
+            auto frame = camera->frame();
+            frame.position = Eigen::Vector3f(-1, 0, 0.5);
+            camera->setTarget(Eigen::Vector3f(0, 0, 0.5));
+            camera->setFrame(frame);
+
+            int deltaZoom = 0;//document->extent().length() * 1.0;
+
+            // Default view angle
+            double theta1 = acos(-1) * 0.75;
+            double theta2 = acos(-1) * 0.10;
+            camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta1, Eigen::Vector3f::UnitY())));
+            camera->zoom(-(4+deltaZoom));
+            camera->rotateAroundTarget(Eigen::Quaternionf(Eigen::AngleAxisf(theta2, Eigen::Vector3f::UnitX())));
+            auto cp = camera->position();
+            thumb_eye = QVector3D(cp[0], cp[1], cp[2]);
+
+            // Camera settings
+            camera->setViewport(128, 128);
+            Eigen::Matrix4f p = camera->projectionMatrix();
+            Eigen::Matrix4f v = camera->viewMatrix().matrix();
+            p.transposeInPlace();
+            v.transposeInPlace();
+
+            thumb_pvm = QMatrix4x4(p.data()) * QMatrix4x4(v.data());
+
+            delete camera;
+        }
+    }
 
 	QVariantMap sharedData;
 	sharedData["sourcePart"].setValue(sourcePart);

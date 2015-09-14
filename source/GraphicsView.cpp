@@ -23,9 +23,10 @@ void GraphicsView::keyPressEvent(QKeyEvent *event)
             settings.setValue("darkBackColor", QColor(27, 30, 32));
             settings.setValue("lightBackColor", QColor(124, 143, 162));
         } else{
+            int v = 50;
             settings.setValue("theme", "light");
-            settings.setValue("darkBackColor", QColor(40, 40, 40));
-            settings.setValue("lightBackColor", QColor(40, 40, 40));
+            settings.setValue("darkBackColor", QColor(v, v, v));
+            settings.setValue("lightBackColor", QColor(v, v, v));
         }
         settings.sync();
         emit(globalSettingsChanged());

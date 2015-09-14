@@ -173,10 +173,11 @@ void Explore::init()
 							if (test1 || test2 || test3)
                             {
                                 //QColor color = ExploreProcess::qtJetColor(similarity);
-                                QColor color = QColor::fromHsl(0, 128, 255 * similarity, 255);
-                                color.setAlphaF(0.75 * similarity);
+                                //QColor color = QColor::fromHsl(0, 128, 255 * similarity, 255);
+                                QColor color = QColor::fromHsl(0, 0, 255 * similarity, 255);
+                                color.setAlphaF(0.9 * similarity);
 
-								auto line = scene()->addLine(linef, QPen(color, similarity * 3));
+                                auto line = scene()->addLine(linef, QPen(color, 1 + (similarity * 2)));
 
 								line->setParentItem(this);
 								line->setFlag(QGraphicsItem::ItemNegativeZStacksBehindParent);

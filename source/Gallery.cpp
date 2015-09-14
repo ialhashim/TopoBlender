@@ -58,7 +58,7 @@ void Gallery::setRect(const QRectF & newRect)
 
 void Gallery::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
-	painter->fillRect(rect, QColor(0, 0, 0, 100));
+    painter->fillRect(rect, QColor(0, 0, 0, 50));
 }
 
 Thumbnail * Gallery::addImageItem(QImage image, QVariantMap data)

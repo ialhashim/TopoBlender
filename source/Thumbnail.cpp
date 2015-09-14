@@ -158,7 +158,7 @@ void Thumbnail::prePaint(QPainter *painter, QWidget *)
     // Radial gradient background
     {
         QRadialGradient grad(rect.center(), rect.width() * 0.5);
-        grad.setColorAt(0, QColor(0,0,0,255));
+        grad.setColorAt(0, QColor(0,0,0,180));
         grad.setColorAt(1, Qt::transparent);
         painter->fillRect(rect, grad);
     }

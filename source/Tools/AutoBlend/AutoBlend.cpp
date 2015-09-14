@@ -69,7 +69,7 @@ void AutoBlend::init()
     }
 
     // Create gallery of shapes
-    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 180));
+    gallery = new Gallery(this, QRectF(0,0,this->bounds.width(), 220));
 
     // Create container that holds results
     results = new Gallery(this, QRectF(0,0, this->bounds.width(),
@@ -83,7 +83,7 @@ void AutoBlend::init()
 
     auto dropShadow = new QGraphicsDropShadowEffect();
 	dropShadow->setOffset(0, 5);
-	dropShadow->setColor(QColor(0, 0, 0, 128));
+    dropShadow->setColor(QColor(0, 0, 0, 150));
 	dropShadow->setBlurRadius(10);
 	gallery->setGraphicsEffect(dropShadow);
 

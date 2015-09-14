@@ -1,3 +1,6 @@
+#include <random>
+#include <algorithm>
+
 #include "Document.h"
 #include "Model.h"
 #include "Viewer.h"
@@ -309,7 +312,32 @@ void Document::loadPairwise(QString filename)
         auto lines = in.readAll().split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
 
         QVector<QColor> cluster_colors;
+
+        // Intresting colors
+        /*
+        auto paired_colors = { "#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c",
+                    "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928",
+                    "#4D4D4D", "#5DA5DA", "#FAA43A", "#60BD68", "#F17CB0", "#B2912F", "#B276B2", "#DECF3F", "#F15854",
+                    "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33", "#a65628", "#f781bf" };
+        int num_paired_colors = paired_colors.size();
+        for (int i = 0; i < num_paired_colors; i++){
+            QColor c;
+            c.setNamedColor(*(paired_colors.begin() + i));
+            cluster_colors << c;
+        }*/
+
+
+        cluster_colors << QColor(255, 97, 121) << QColor(255, 219, 88) << QColor(107, 255, 135) << QColor(255, 165, 107) << QColor(104, 126, 255) <<
+                        QColor(242, 5, 135) << QColor(138, 0, 242) << QColor(3, 166, 60) << QColor(242, 203, 5);
+
+
+        // Generate random colors
+        srand(time(0));
         for(int c = 0; c < lines.size(); c++) cluster_colors << starlab::qRandomColor2();
+
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(cluster_colors.begin(), cluster_colors.end(), g);
 
         for (int i = 0; i < lines.size(); i++)
         {
