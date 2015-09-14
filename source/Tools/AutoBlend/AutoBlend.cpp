@@ -40,6 +40,9 @@ auto toBasicMesh = [&](opengp::SurfaceMesh::SurfaceMeshModel * m, QColor color){
 
 AutoBlend::AutoBlend(Document *document, const QRectF &bounds) : Tool(document), gallery(nullptr), results(nullptr)
 {
+    // Enable keyboard
+    this->setFlags(QGraphicsItem::ItemIsFocusable);
+
     setBounds(bounds);
     setObjectName("autoBlend");
 }
@@ -159,7 +162,24 @@ void AutoBlend::init()
 
 		// Do blend
 		connect(widget->blendButton, SIGNAL(pressed()), SLOT(doBlend())); 
-	}
+    }
+}
+
+void AutoBlend::keyPressEvent(QKeyEvent *event)
+{
+    // Save results to files
+    if(event->key() == Qt::Key_F)
+    {
+        if(results)
+        {
+            int i = 0;
+
+            for(auto t : results->items)
+            {
+                t->saveImage(QString("%1_%2.png").arg(t->data["name"].toString()).arg(i++));
+            }
+        }
+    }
 }
 
 void AutoBlend::doBlend()
@@ -262,6 +282,10 @@ void AutoBlend::doBlend()
 
                 auto t = results->addTextItem("");
                 t->setCamera(cameraPos, cameraMatrix);
+
+                QVariantMap data;
+                data["name"] = QString("%1_%2").arg(sourceName).arg(targetName);
+                t->setData(data);
 
                 // Add parts of target shape
                 for (auto n : blendedModel->nodes){

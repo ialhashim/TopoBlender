@@ -21,6 +21,10 @@ protected:
 
 	QMatrix4x4 cameraMatrix;
 	QVector3D cameraPos;
+
+protected:
+    void keyPressEvent(QKeyEvent *event);
+
 public slots:
 	void doBlend();
 };
