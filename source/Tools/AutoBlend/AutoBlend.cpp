@@ -96,8 +96,8 @@ void AutoBlend::init()
 			document->currentCategory = text;
 		});
 
-		connect(widget->analyzeButton, &QPushButton::pressed, [&](){
-			document->analyze(widget->categoriesBox->currentText());
+        connect(widget->analyzeButton, &QPushButton::pressed, [&](){
+            document->computePairwise(widget->categoriesBox->currentText());
 		});
 
 		// Default view angle

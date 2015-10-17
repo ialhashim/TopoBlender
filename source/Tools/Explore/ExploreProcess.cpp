@@ -245,7 +245,7 @@ void ExploreProcess::BlendPath::prepare(Document *document)
 
     switch (LOD){
         case 0: numSamples = 10; reconLevel = 4; break;
-        case 1: numSamples = 100; reconLevel = 4; break;
+        case 1: numSamples = 200; reconLevel = 4; break;
         case 2: numSamples = 1000; reconLevel = 5; break;
         case 3: numSamples = 10000; reconLevel = 7; break;
     }

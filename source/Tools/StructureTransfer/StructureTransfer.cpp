@@ -211,9 +211,10 @@ void StructureTransfer::resizeViews()
 void StructureTransfer::thumbnailSelected(Thumbnail * t)
 {
     QVariantMap data = t->data;
+    auto sourceName = document->firstModelName();
     auto targetName = data["targetName"].toString();
 
-	auto sourceModel = document->getModel(document->firstModelName());
+    auto sourceModel = document->getModel(sourceName);
     auto targetModel = document->cacheModel(targetName);
 
 	if (!sourceModel->ShapeGraph::property.contains("origPoints"))
@@ -223,64 +224,100 @@ void StructureTransfer::thumbnailSelected(Thumbnail * t)
 
     ShapeGeometry::encodeGeometry(sourceModel);
 
-    auto shapeA = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*sourceModel));
-    auto shapeB = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*targetModel));
-
-    QSharedPointer<Energy::GuidedDeformation> egd = QSharedPointer<Energy::GuidedDeformation>(new Energy::GuidedDeformation);
-
-    egd->K = 20;
-    egd->K_2 = 4;
-    QVector<Energy::SearchNode> search_roots;
-    egd->searchDP(shapeA.data(), shapeB.data(), search_roots);
-
-    // Extract matches
-    QVector< QPair<QString,QString> > pairs;
+    if(document->datasetCorr.contains(sourceName))
     {
-        Energy::SearchNode * selected_path = &(search_roots.back());
+        auto shapeA = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*sourceModel));
+        auto shapeB = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*targetModel));
 
-        QSet< QString > matchings;
-        for (auto key : selected_path->mapping.keys())
+        QStringList la, lb;
+        QSet<QString> tempFixed;
+
+        for (auto n : sourceModel->nodes)
         {
-            auto sn = selected_path->shapeA->getNode(key);
-            auto tn = selected_path->shapeB->getNode(selected_path->mapping[key]);
+            n->vis_property["isHidden"].setValue(false);
 
-            // For cutting case + splitting case
-            auto realID = [&](Structure::Node * n){
-                QString id = n->property.contains("realOriginalID") ? n->property["realOriginalID"].toString() : n->id;
-                return id.split("@").front();
-            };
-
-            QString sid = realID(sn);
-            QString tid = realID(tn);
-
-            // Check for one-to-many case
-            bool isSourceOne = !selected_path->shapeA->hasRelation(sid) || selected_path->shapeA->relationOf(sid).parts.size() == 1;
-            bool isTargetMany = selected_path->shapeB->hasRelation(tid) && selected_path->shapeB->relationOf(tid).parts.size() > 1;
-            if (isSourceOne && isTargetMany)
+            if(document->datasetCorr[sourceName][n->id].contains(targetName))
             {
-                for (auto tj : selected_path->shapeB->relationOf(tid).parts)
-                    matchings << QString("%1|%2").arg(sid).arg(realID(selected_path->shapeB->getNode(tj)));
+                la << n->id;
+                lb << document->datasetCorr[sourceName][n->id][targetName].front();
             }
             else
-                matchings << QString("%1|%2").arg(sid).arg(tid);
+            {
+                n->vis_property["isHidden"].setValue(true);
+            }
         }
 
-        for (auto m : matchings)
-        {
-            auto matching = m.split("|");
-            auto sid = matching.front();
-            auto tid = matching.back();
+        Energy::GuidedDeformation egd;
+        egd.preprocess(shapeA.data(), shapeB.data());
+        egd.topologicalOpeartions(shapeA.data(), shapeB.data(), la, lb);
+        egd.applyDeformation(shapeA.data(), shapeB.data(), la, lb, tempFixed, true);
 
-            pairs << qMakePair(sid,tid);
+        for (auto n : sourceModel->nodes)
+        {
+            n->setControlPoints(shapeA->getNode(n->id)->controlPoints());
         }
     }
+    else
+    {
+        auto shapeA = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*sourceModel));
+        auto shapeB = QSharedPointer<Structure::ShapeGraph>(new Structure::ShapeGraph(*targetModel));
 
-	Energy::SearchNode * selected_path = &(search_roots.back());
+        QSharedPointer<Energy::GuidedDeformation> egd = QSharedPointer<Energy::GuidedDeformation>(new Energy::GuidedDeformation);
 
-	for (auto n : sourceModel->nodes)
-	{
-		n->setControlPoints(selected_path->shapeA->getNode(n->id)->controlPoints());
-	}
+        egd->K = 20;
+        egd->K_2 = 4;
+        QVector<Energy::SearchNode> search_roots;
+        egd->searchDP(shapeA.data(), shapeB.data(), search_roots);
+
+        // Extract matches
+        QVector< QPair<QString,QString> > pairs;
+        {
+            Energy::SearchNode * selected_path = &(search_roots.back());
+
+            QSet< QString > matchings;
+            for (auto key : selected_path->mapping.keys())
+            {
+                auto sn = selected_path->shapeA->getNode(key);
+                auto tn = selected_path->shapeB->getNode(selected_path->mapping[key]);
+
+                // For cutting case + splitting case
+                auto realID = [&](Structure::Node * n){
+                    QString id = n->property.contains("realOriginalID") ? n->property["realOriginalID"].toString() : n->id;
+                    return id.split("@").front();
+                };
+
+                QString sid = realID(sn);
+                QString tid = realID(tn);
+
+                // Check for one-to-many case
+                bool isSourceOne = !selected_path->shapeA->hasRelation(sid) || selected_path->shapeA->relationOf(sid).parts.size() == 1;
+                bool isTargetMany = selected_path->shapeB->hasRelation(tid) && selected_path->shapeB->relationOf(tid).parts.size() > 1;
+                if (isSourceOne && isTargetMany)
+                {
+                    for (auto tj : selected_path->shapeB->relationOf(tid).parts)
+                        matchings << QString("%1|%2").arg(sid).arg(realID(selected_path->shapeB->getNode(tj)));
+                }
+                else
+                    matchings << QString("%1|%2").arg(sid).arg(tid);
+            }
+
+            for (auto m : matchings)
+            {
+                auto matching = m.split("|");
+                auto sid = matching.front();
+                auto tid = matching.back();
+
+                pairs << qMakePair(sid,tid);
+            }
+        }
+
+        Energy::SearchNode * selected_path = &(search_roots.back());
+
+        for (auto n : sourceModel->nodes)
+        {
+            n->setControlPoints(selected_path->shapeA->getNode(n->id)->controlPoints());
+        }
+    }
 
     ShapeGeometry::decodeGeometry(sourceModel);
 
