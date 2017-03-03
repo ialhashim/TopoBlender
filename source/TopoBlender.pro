@@ -40,7 +40,7 @@ SOURCES +=  main.cpp\
             Tools/Explore/Explore.cpp \
             Tools/Explore/ExploreProcess.cpp \
             Tools/Explore/ExploreLiveView.cpp \
-    ResolveCorrespondence.cpp
+            ResolveCorrespondence.cpp
 
 HEADERS  += mainwindow.h \
             GeometryHelper.h \
@@ -75,7 +75,7 @@ HEADERS  += mainwindow.h \
             Tools/Explore/Explore.h \
             Tools/Explore/ExploreProcess.h \
             Tools/Explore/ExploreLiveView.h \
-    ResolveCorrespondence.h
+            ResolveCorrespondence.h
 
 # Qt UI files
 FORMS    += mainwindow.ui \

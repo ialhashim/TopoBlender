@@ -19,6 +19,8 @@ using namespace cinekine;
 
 #include "ResolveCorrespondence.h"
 
+#include <memory>
+
 QPair<QVector3D,QMatrix4x4> ExploreProcess::defaultCamera(double zoomFactor, int width, int height)
 {
     // Camera target and initial position
@@ -144,7 +146,7 @@ QColor ExploreProcess::qtJetColor(double v, double vmin, double vmax)
 
 QPolygonF ExploreProcess::embed(QMap<int, QMap<int, double> > distMatrix, int embedOption)
 {
-    QSharedPointer< smat::Matrix<double> > X;
+    std::shared_ptr< smat::Matrix<double> > X;
     smat::Matrix<double> D(distMatrix.size(), distMatrix.size(), 0);
 
     for(auto i : distMatrix.keys())
@@ -158,8 +160,8 @@ QPolygonF ExploreProcess::embed(QMap<int, QMap<int, double> > distMatrix, int em
     }
 
     // MDS
-    if(embedOption == 0) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_SMACOF(&D, NULL, 2, 200));
-    if(embedOption == 1) X = QSharedPointer< smat::Matrix<double> >(smat::MDS_UCF(&D, NULL, 2, 200));
+    if(embedOption == 0) X = std::shared_ptr< smat::Matrix<double> >(smat::MDS_SMACOF(&D, NULL, 2, 200));
+    if(embedOption == 1) X = std::shared_ptr< smat::Matrix<double> >(smat::MDS_UCF(&D, NULL, 2, 200));
 
     QPolygonF allPoints;
     for(int i = 0; i < D.rows(); i++)
